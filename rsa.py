@@ -1,6 +1,23 @@
 """
 RSA暗号化ライブラリ
 Simple RSA encryption/decryption implementation
+
+**重要な注意事項 / IMPORTANT NOTICE**:
+この実装は教育目的のものであり、本番環境での使用には適していません。
+本番環境では以下の対策が必要です：
+- より長い鍵長（2048ビット以上）
+- 適切なパディングスキーム（OAEP等）の実装
+- より安全な乱数生成器の使用
+- タイミング攻撃への対策
+- ブロック単位の暗号化（バイト単位ではなく）
+
+This is an educational implementation and NOT suitable for production use.
+For production environments, you need:
+- Longer key lengths (2048+ bits)
+- Proper padding schemes (e.g., OAEP)
+- More secure random number generation
+- Timing attack countermeasures
+- Block-based encryption (not byte-by-byte)
 """
 
 import random
@@ -62,7 +79,7 @@ def generate_prime(bits=512):
     while True:
         # ランダムな奇数を生成
         n = random.getrandbits(bits)
-        n |= (1 << bits - 1) | 1  # 最上位ビットと最下位ビットを1に設定
+        n |= (1 << (bits - 1)) | 1  # 最上位ビットと最下位ビットを1に設定
         
         if is_prime(n):
             return n
@@ -144,8 +161,14 @@ def generate_keypair(bits=1024):
     e = 65537
     
     # e と φ(n) が互いに素であることを確認
+    max_attempts = 100
+    attempts = 0
     while gcd(e, phi) != 1:
         e = random.randrange(2, phi)
+        attempts += 1
+        if attempts >= max_attempts:
+            # 通常はここには到達しないが、安全のため
+            raise ValueError("適切な公開指数eが見つかりませんでした。異なる素数で再試行してください。")
     
     # 秘密指数 d を計算: d ≡ e^(-1) (mod φ(n))
     d = mod_inverse(e, phi)
@@ -157,6 +180,10 @@ def generate_keypair(bits=1024):
 def encrypt(public_key, plaintext):
     """
     RSA暗号化
+    
+    **セキュリティ警告**: この実装は教育目的です。
+    本番環境では、OAEP等の適切なパディングスキームを使用し、
+    個別のバイトではなくブロック単位で暗号化してください。
     
     Args:
         public_key: 公開鍵 (e, n)
@@ -172,6 +199,8 @@ def encrypt(public_key, plaintext):
         plaintext = plaintext.encode('utf-8')
     
     # 各バイトを暗号化
+    # 注意: 本番環境では、適切なパディング（OAEP等）を使用し、
+    # より大きなブロックサイズで暗号化すべきです
     cipher = []
     for byte in plaintext:
         # c = m^e mod n
