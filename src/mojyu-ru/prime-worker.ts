@@ -149,7 +149,7 @@ function isProbablyPrime(n: bigint, k: number = 15): boolean {
 // ===== メイン：鍵生成(generateLargePrime) =====
 
 async function loadSmallPrimes() {
-  const response = await fetch("https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/chatapps@main/primes.bin");
+  const response = await fetch("https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin");
   const buffer = await response.arrayBuffer();
   const view = new Uint32Array(buffer);
   smallPrimesBI = Array.from(view).map(p => BigInt(p));

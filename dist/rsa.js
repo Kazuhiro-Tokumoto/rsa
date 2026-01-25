@@ -66,7 +66,7 @@ async function main() {
     const cryptos = new RSA();
     isinmu(isinmumode);
     try {
-        await cryptos.initAsync("https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/chatapps@main/primes.bin");
+        await cryptos.initAsync("https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin");
     }
     catch (e) {
         console.error("初期化エラー:", e);
