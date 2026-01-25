@@ -136,40 +136,75 @@ export class RSA {
         const message = db.subarray(separatorIndex + 1);
         return message;
     }
+    encryptWorkers = [];
+    decryptWorkers = [];
+    workerCount = 4;
+    workersInitialized = false;
+    // Worker初期化
+    initWorkers() {
+        if (this.workersInitialized)
+            return;
+        try {
+            for (let i = 0; i < this.workerCount; i++) {
+                const encWorker = new Worker('./dist/mojyu-ru/encrypt-worker.js');
+                const decWorker = new Worker('./dist/mojyu-ru/decrypt-worker.js');
+                // エラーハンドラ追加
+                encWorker.onerror = (e) => {
+                    console.error('🔴 Encrypt Worker エラー:', e);
+                    console.error('🔴 メッセージ:', e.message);
+                    console.error('🔴 ファイル:', e.filename);
+                };
+                decWorker.onerror = (e) => {
+                    console.error('🔴 Decrypt Worker エラー:', e);
+                    console.error('🔴 メッセージ:', e.message);
+                    console.error('🔴 ファイル:', e.filename);
+                };
+                this.encryptWorkers.push(encWorker);
+                this.decryptWorkers.push(decWorker);
+            }
+            this.workersInitialized = true;
+            console.log('✅ Worker並列化 初期化成功');
+        }
+        catch (err) {
+            console.error('❌ Worker初期化で例外:', err);
+            console.warn('⚠️ Worker初期化失敗、メインスレッドで実行します', err);
+        }
+    }
+    // ===== 既存のencryptStringToBase64を書き換え =====
     async encryptStringToBase64(text, e, n, onProgress) {
         const msgBin = new TextEncoder().encode(text);
         const nByteLen = Math.ceil(this.bitLength(n) / 8);
         const maxChunkSize = nByteLen - 66;
-        if (maxChunkSize <= 0) {
-            throw new Error("Key size is too small for OAEP padding.");
+        // ブロック分割
+        const chunks = [];
+        for (let i = 0; i < msgBin.length; i += maxChunkSize) {
+            chunks.push(msgBin.slice(i, i + maxChunkSize));
         }
+        // Worker使えるなら並列処理、ダメならメインスレッド
+        this.initWorkers();
+        if (this.workersInitialized && chunks.length > 10) {
+            // 10ブロック以上なら並列処理
+            return this.encryptParallel(chunks, e, n, nByteLen, onProgress);
+        }
+        else {
+            // 既存のメインスレッド版
+            return this.encryptSequential(chunks, e, n, nByteLen, onProgress);
+        }
+    }
+    // メインスレッド版（既存のコードをここに移動）
+    async encryptSequential(chunks, e, n, nByteLen, onProgress) {
         const encryptedChunks = [];
-        const totalLength = msgBin.length;
-        let processedLength = 0;
-        // データを分割して処理
-        for (let i = 0; i < totalLength; i += maxChunkSize) {
-            const chunk = msgBin.slice(i, i + maxChunkSize);
-            // 進捗率の計算用
-            const currentProgressBase = (i / totalLength) * 100;
-            const chunkProgressScale = (chunk.length / totalLength);
-            const paddedMsg = await this.oeapPad(chunk, nByteLen, new Uint8Array(0), (stage, progress) => {
-                // パディング中の進捗(全体の70%までの中で配分)
-                // ここでは簡略化のため、パディング処理自体の進捗はログに出しすぎないように調整するか、
-                // 全体の進捗にマッピングします。
-            });
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            const paddedMsg = await this.oeapPad(chunk, nByteLen, new Uint8Array(0));
             const m = this.bytesToBigInt(paddedMsg);
             const c = this.modExp(m, e, n);
             const cBytes = this.bigintToUint8Array(c);
-            // 暗号化されたブロックは必ずnByteLenの長さになるようにパディング（先頭0埋め）が必要
-            // これをしないと結合したときに境界がわからなくなります
             const cBytesPadded = new Uint8Array(nByteLen);
             cBytesPadded.set(cBytes, nByteLen - cBytes.length);
             encryptedChunks.push(cBytesPadded);
-            processedLength += chunk.length;
-            onProgress?.("暗号化進行中", Math.min(95, Math.floor((processedLength / totalLength) * 100)));
+            onProgress?.("暗号化進行中", Math.floor(((i + 1) / chunks.length) * 100));
         }
-        onProgress?.("Base64エンコード中", 95);
-        // 全ての暗号化ブロックを結合
         const totalEncryptedLength = encryptedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
         const combinedEncrypted = new Uint8Array(totalEncryptedLength);
         let offset = 0;
@@ -177,76 +212,202 @@ export class RSA {
             combinedEncrypted.set(chunk, offset);
             offset += chunk.length;
         }
-        const result = this.bytesToBase64(combinedEncrypted);
-        onProgress?.("暗号化完了", 100);
-        return result;
+        return this.bytesToBase64(combinedEncrypted);
     }
+    // Worker並列版
+    async encryptParallel(chunks, e, n, nByteLen, onProgress) {
+        const chunksPerWorker = Math.ceil(chunks.length / this.workerCount);
+        const promises = this.encryptWorkers.map((worker, idx) => {
+            const start = idx * chunksPerWorker;
+            const end = Math.min(start + chunksPerWorker, chunks.length);
+            const workerChunks = chunks.slice(start, end);
+            if (workerChunks.length === 0)
+                return Promise.resolve([]);
+            return new Promise((resolve) => {
+                worker.onmessage = (event) => {
+                    // エラーチェック
+                    if (event.data.error) {
+                        console.error('❌ Worker内でエラー:', event.data.error);
+                        resolve([]);
+                        return;
+                    }
+                    if (!event.data.results) {
+                        console.error('❌ results が undefined!');
+                        resolve([]);
+                        return;
+                    }
+                    // base64文字列配列 → Uint8Array配列に戻す
+                    const base64Results = event.data.results;
+                    const uint8Results = base64Results.map(b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+                    resolve(uint8Results);
+                };
+                worker.onerror = (err) => {
+                    console.error('❌ Workerエラー:', err);
+                    resolve([]);
+                };
+                worker.postMessage({
+                    chunks: workerChunks,
+                    e: e.toString(), // BigInt → 文字列
+                    n: n.toString(),
+                    nByteLen,
+                });
+            });
+        });
+        onProgress?.("並列暗号化中", 50);
+        const results = await Promise.all(promises);
+        // 結果を順番通りに結合
+        const allChunks = results.flat();
+        const totalLength = allChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const combined = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of allChunks) {
+            combined.set(chunk, offset);
+            offset += chunk.length;
+        }
+        onProgress?.("暗号化完了", 100);
+        return this.bytesToBase64(combined);
+    }
+    // ===== 既存のdecryptBase64ToStringを書き換え =====
     async decryptBase64ToString(b64Cipher, d, p, q, n, onProgress, dp, dq, qInv) {
-        onProgress?.("Base64デコード中", 0);
         const cipherBin = this.base64ToBytes(b64Cipher);
         const nByteLen = Math.ceil(this.bitLength(n) / 8);
-        // 暗号文の長さは必ずブロックサイズの倍数である必要があります
-        if (cipherBin.length % nByteLen !== 0) {
-            // 必要であればエラーハンドリングを追加してください
-            // console.warn("Warning: Ciphertext length is not a multiple of key size.");
-        }
-        const decryptedChunks = [];
+        // ブロックに分割
+        const chunks = [];
         const totalBlocks = cipherBin.length / nByteLen;
-        // CRTパラメータの事前準備
+        for (let i = 0; i < totalBlocks; i++) {
+            const start = i * nByteLen;
+            chunks.push(cipherBin.slice(start, start + nByteLen));
+        }
+        this.initWorkers();
+        if (this.workersInitialized && chunks.length > 10) {
+            // 10ブロック以上なら並列処理
+            return this.decryptParallel(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv);
+        }
+        else {
+            // 既存のメインスレッド版
+            return this.decryptSequential(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv);
+        }
+    }
+    // メインスレッド版（既存のコードをここに移動）
+    // src/mojyu-ru/rsa.ts の decryptSequential メソッド
+    async decryptSequential(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv) {
         if (!dp)
             dp = d % (p - 1n);
         if (!dq)
             dq = d % (q - 1n);
         if (!qInv)
             qInv = this.getPrivateKeyD(q, p);
-        for (let i = 0; i < totalBlocks; i++) {
-            const start = i * nByteLen;
-            const chunk = cipherBin.slice(start, start + nByteLen);
+        const decryptedChunks = [];
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
             const c = this.bytesToBigInt(chunk);
-            // ブロックごとの進捗計算
-            const currentProgress = Math.floor((i / totalBlocks) * 100);
-            onProgress?.(`復号・ブロック処理中 (${i + 1}/${totalBlocks})`, currentProgress);
-            const cp = c >= p ? c - p : c;
-            const cq = c >= q ? c - q : c;
+            const cp = c >= p ? c % p : c;
+            const cq = c >= q ? c % q : c;
             const m1 = this.modExp(cp, dp, p);
             const m2 = this.modExp(cq, dq, q);
             let diff = m1 - m2;
             if (diff < 0n)
                 diff += p;
-            const h_temp = qInv * diff;
-            const h = h_temp >= p ? h_temp % p : h_temp;
+            const h = (qInv * diff) % p;
             const m = m2 + h * q;
-            let paddedMsg = this.bigintToUint8Array(m);
-            // パディング調整
-            if (paddedMsg.length < nByteLen) {
-                const temp = new Uint8Array(nByteLen);
-                temp.set(paddedMsg, nByteLen - paddedMsg.length);
-                paddedMsg = temp;
-            }
-            let messageChunk;
-            // OAEPパディング除去
+            // ← ここを修正！m が n より大きい場合は mod n する
+            const mNormalized = m >= n ? m % n : m;
+            // ← サイズも柔軟に
+            let paddedMsg;
             try {
-                messageChunk = await this.oeapUnpad(paddedMsg, nByteLen, new Uint8Array(0), () => { } // ループ内なので詳細な進捗は省略
-                );
+                paddedMsg = this.bigintToUint8Array(mNormalized, nByteLen);
             }
-            catch (oeapError) {
-                // フォールバック処理
+            catch {
+                // サイズ指定なしで変換
+                paddedMsg = this.bigintToUint8Array(mNormalized);
+                // nByteLen に合わせてパディング
+                if (paddedMsg.length < nByteLen) {
+                    const temp = new Uint8Array(nByteLen);
+                    temp.set(paddedMsg, nByteLen - paddedMsg.length);
+                    paddedMsg = temp;
+                }
+            }
+            try {
+                const messageChunk = await this.oeapUnpad(paddedMsg, nByteLen, new Uint8Array(0));
+                decryptedChunks.push(messageChunk);
+            }
+            catch {
                 const filtered = paddedMsg.filter(byte => byte !== 0x00);
-                messageChunk = new Uint8Array(filtered);
+                decryptedChunks.push(new Uint8Array(filtered));
             }
-            decryptedChunks.push(messageChunk);
+            onProgress?.(`復号・ブロック処理中 (${i + 1}/${chunks.length})`, Math.floor(((i + 1) / chunks.length) * 100));
         }
-        onProgress?.("データ結合中", 95);
-        // 復号された全チャンクを結合
-        const totalDecryptedLength = decryptedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-        const combinedDecrypted = new Uint8Array(totalDecryptedLength);
+        const totalLength = decryptedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const combined = new Uint8Array(totalLength);
         let offset = 0;
         for (const chunk of decryptedChunks) {
-            combinedDecrypted.set(chunk, offset);
+            combined.set(chunk, offset);
+            offset += chunk.length;
+        }
+        return new TextDecoder().decode(combined);
+    }
+    // Worker並列版
+    async decryptParallel(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv) {
+        if (!dp)
+            dp = d % (p - 1n);
+        if (!dq)
+            dq = d % (q - 1n);
+        if (!qInv)
+            qInv = this.getPrivateKeyD(q, p);
+        const chunksPerWorker = Math.ceil(chunks.length / this.workerCount);
+        // chunksをbase64文字列配列に変換
+        const chunksB64 = chunks.map(chunk => btoa(String.fromCharCode(...chunk)));
+        const promises = this.decryptWorkers.map((worker, idx) => {
+            const start = idx * chunksPerWorker;
+            const end = Math.min(start + chunksPerWorker, chunksB64.length);
+            const workerChunks = chunksB64.slice(start, end);
+            if (workerChunks.length === 0)
+                return Promise.resolve([]);
+            return new Promise((resolve) => {
+                worker.onmessage = (event) => {
+                    // エラーチェック
+                    if (event.data.error) {
+                        console.error('❌ Worker内でエラー:', event.data.error);
+                        resolve([]);
+                        return;
+                    }
+                    if (!event.data.results) {
+                        console.error('❌ results が undefined!');
+                        resolve([]);
+                        return;
+                    }
+                    const base64Results = event.data.results;
+                    const uint8Results = base64Results.map(b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+                    resolve(uint8Results);
+                };
+                worker.onerror = (err) => {
+                    console.error('❌ Workerエラー:', err);
+                    resolve([]);
+                };
+                worker.postMessage({
+                    chunks: workerChunks,
+                    d: d.toString(),
+                    p: p.toString(),
+                    q: q.toString(),
+                    dp: dp.toString(),
+                    dq: dq.toString(),
+                    qInv: qInv.toString(),
+                    nByteLen,
+                });
+            });
+        });
+        onProgress?.("並列復号中", 50);
+        const results = await Promise.all(promises);
+        const allChunks = results.flat();
+        const totalLength = allChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const combined = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of allChunks) {
+            combined.set(chunk, offset);
             offset += chunk.length;
         }
         onProgress?.("復号完了", 100);
-        return new TextDecoder().decode(combinedDecrypted);
+        return new TextDecoder().decode(combined);
     }
     // PKCS#1 v1.5パディングを追加
     // OpenSSL完全互換のRSA署名実装
@@ -665,7 +826,7 @@ export class RSA {
         return new Promise((resolve) => {
             let worker;
             try {
-                worker = new Worker("./mojyu-ru/prime-worker.js");
+                worker = new Worker("./dist/mojyu-ru/prime-worker.js");
             }
             catch {
                 return resolve(this.generateLargePrime(bits));

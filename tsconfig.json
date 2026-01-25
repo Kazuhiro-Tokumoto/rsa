@@ -17,5 +17,10 @@
     "noEmit": false,              /* 【重要】Viteがビルドするのでtscはファイルを出さない */
     "allowImportingTsExtensions": false, /* .ts を直接 import している場合のエラー防止 */
   },
-  "include": ["src", "rsa.js"],
+    "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/mojyu-ru/*-worker.ts"  // ← Worker ファイルを除外
+  ]
 }

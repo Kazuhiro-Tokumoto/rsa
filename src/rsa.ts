@@ -367,6 +367,70 @@ async function main() {
     currentUrl.searchParams.set("mode", "switch");
     window.location.href = currentUrl.toString();
   }
+  async function megaTest() {
+  const rsa = new RSA();
+  
+  console.log("=== 超大量データテスト ===\n");
+  
+  const { e, d, p, q, n } = await rsa.generateRSAKeyPair(4096);
+  
+  // 1KB
+  console.log("--- 1KB ---");
+  const text1kb = "あ".repeat(333);
+  console.time("暗号化 1KB");
+  const enc1 = await rsa.encryptStringToBase64(text1kb, e, n);
+  console.timeEnd("暗号化 1KB");
+  console.time("復号 1KB");
+  const dec1 = await rsa.decryptBase64ToString(enc1, d, p, q, n);
+  console.timeEnd("復号 1KB");
+  console.log("一致:", text1kb === dec1);
+  
+  // 10KB
+  console.log("\n--- 10KB ---");
+  const text10kb = "あ".repeat(3333);
+  console.time("暗号化 10KB");
+  const enc2 = await rsa.encryptStringToBase64(text10kb, e, n);
+  console.timeEnd("暗号化 10KB");
+  console.time("復号 10KB");
+  const dec2 = await rsa.decryptBase64ToString(enc2, d, p, q, n);
+  console.timeEnd("復号 10KB");
+  console.log("一致:", text10kb === dec2);
+  
+  // 100KB
+  console.log("\n--- 100KB ---");
+  const text100kb = "あ".repeat(33333);
+  console.time("暗号化 100KB");
+  const enc3 = await rsa.encryptStringToBase64(text100kb, e, n);
+  console.timeEnd("暗号化 100KB");
+  console.time("復号 100KB");
+  const dec3 = await rsa.decryptBase64ToString(enc3, d, p, q, n);
+  console.timeEnd("復号 100KB");
+  console.log("一致:", text100kb === dec3);
+  
+  // 500KB
+  console.log("\n--- 500KB ---");
+  const text500kb = "あ".repeat(166666);
+  console.time("暗号化 500KB");
+  const enc4 = await rsa.encryptStringToBase64(text500kb, e, n);
+  console.timeEnd("暗号化 500KB");
+  console.time("復号 500KB");
+  const dec4 = await rsa.decryptBase64ToString(enc4, d, p, q, n);
+  console.timeEnd("復号 500KB");
+  console.log("一致:", text500kb === dec4);
+  
+  // 1MB
+  console.log("\n--- 1MB ---");
+  const text1mb = "あ".repeat(333333);
+  console.time("暗号化 1MB");
+  const enc5 = await rsa.encryptStringToBase64(text1mb, e, n);
+  console.timeEnd("暗号化 1MB");
+  console.time("復号 1MB");
+  const dec5 = await rsa.decryptBase64ToString(enc5, d, p, q, n);
+  console.timeEnd("復号 1MB");
+  console.log("一致:", text1mb === dec5);
+}
+
+megaTest();
 }
 
 const delay = Math.random() * 1000;
