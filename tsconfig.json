@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",          /* 【必須】Reactの書き方を許可する */
+    "lib": ["ESNext", "DOM", "DOM.Iterable"], /* Reactの型定義に必要 */
+    "types": ["node"],
+
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "noEmit": false,              /* 【重要】Viteがビルドするのでtscはファイルを出さない */
+    "allowImportingTsExtensions": false, /* .ts を直接 import している場合のエラー防止 */
+  },
+  "include": ["src", "rsa.js"],
+}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; color: #333; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); width: 100%; max-width: 650px; margin-bottom: 20px; border: 1px solid #eee; }
+        h1 { font-size: 1.1rem; color: #1a73e8; margin: 0 0 15px 0; border-bottom: 2px solid #e8f0fe; padding-bottom: 8px; }
+        .group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.8rem; font-weight: bold; color: #555; margin-bottom: 5px; }
+        input, textarea { width: 100%; border: 1px solid #ddd; border-radius: 6px; padding: 10px; font-size: 14px; box-sizing: border-box; font-family: monospace; }
+        .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+        button { flex: 1; background: #1a73e8; color: #fff; border: none; border-radius: 6px; padding: 12px; font-weight: bold; cursor: pointer; }
+        button:hover:not(:disabled) { opacity: 0.9; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .switch-btn { background: #6c757d; padding: 5px 10px; font-size: 12px; height: 38px; flex: 0.3; }
+        .enc-btn { background: #5f6368; }
+        .gen-btn { background: #34a853; width: auto; padding: 8px 15px; margin-bottom: 10px; font-size: 12px; }
+        #res-area { background: #f8f9fa; border: 1px solid #eee; padding: 12px; border-radius: 6px; margin-top: 10px; min-height: 40px; word-break: break-all; font-family: monospace; font-size: 1.1rem; }
+        .result-info { font-family: monospace; font-size: 0.9rem; background: #fffbe6; padding: 10px; border: 1px solid #ffe58f; border-radius: 6px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>RSA Engine (Main)</h1>
+    <div class="group"><label>Modulus (n)</label><input id="n" type="text" placeholder="nを入力"></div>
+    
+    <label>Exponent (k)</label>
+    <div style="display: flex; gap: 5px; margin-bottom: 12px;">
+        <input id="k" type="text" placeholder="e または d" style="flex: 2;">
+        <button class="switch-btn" onclick="setK('e')">USE e</button>
+        <button class="switch-btn" onclick="setK('d')">USE d</button>
+    </div>
+
+    <div class="group"><label>Input Data (Text or Numbers)</label><textarea id="data" rows="4" placeholder="文字を入力 or 数字を入力"></textarea></div>
+    <div class="btn-row">
+        <button onclick="process(true)">文字を暗号化 (eで実行推奨)</button>
+        <button class="enc-btn" onclick="process(false)">数字を復号 (dで実行推奨)</button>
+    </div>
+    <div id="res-area">RESULT: -</div>
+</div>
+
+<div class="card" style="border: 2px solid #34a853;">
+    <h1>Key Generator & Internal Storage</h1>
+    <button id="p_gen_btn" class="gen-btn" onclick="autoFillPrime()">素数を生成</button>
+    <span style="font-size:12px; color:red; cursor:pointer; text-decoration:underline; margin-left:10px;" onclick="resetPrimes()">リセット</span>
+    <div style="display: flex; gap: 10px;">
+        <div class="group" style="flex:1;"><label>p</label><input id="p_in" readonly></div>
+        <div class="group" style="flex:1;"><label>q</label><input id="q_in" readonly></div>
+    </div>
+    <div class="group"><label>Public Exponent (e)</label><input id="e_in" value="65537"></div>
+    <button style="background:#555;" onclick="calculateAndStore()">n, e, d を計算・保存</button>
+    
+    <div id="key_storage" class="result-info">
+        <div><strong>Last Generated Keys:</strong></div>
+        <div>n: <span id="stored_n">-</span></div>
+        <div>e: <span id="stored_e">-</span></div>
+        <div>d: <span id="stored_d" style="color:#d93025; font-weight:bold;">-</span></div>
+    </div>
+</div>
+
+<script>
+// ストレージ用の変数
+let lastE = "65537";
+let lastD = "-";
+
+function setK(type) {
+    if (type === 'e') document.getElementById('k').value = lastE;
+    if (type === 'd') document.getElementById('k').value = lastD;
+}
+
+const modExp = (b, e, m) => {
+    let r = 1n; b %= m;
+    while (e > 0n) {
+        if (e % 2n === 1n) r = (r * b) % m;
+        b = (b * b) % m; e /= 2n;
+    }
+    return r;
+};
+
+function modInverse(e, phi) {
+    let m0 = phi, t, q, x0 = 0n, x1 = 1n;
+    while (e > 1n) {
+        if (phi === 0n) return 0n;
+        q = e / phi; t = phi; phi = e % phi; e = t;
+        t = x0; x0 = x1 - q * x0; x1 = t;
+    }
+    return x1 < 0n ? x1 + m0 : x1;
+}
+
+function isPrime(n) {
+    if (n < 2n) return false;
+    for (let i = 2n; i * i <= n; i++) if (n % i === 0n) return false;
+    return true;
+}
+
+function autoFillPrime() {
+    const pF = document.getElementById('p_in'), qF = document.getElementById('q_in'), btn = document.getElementById('p_gen_btn');
+    let p; do { p = BigInt(Math.floor(Math.random() * 90000000) + 10000000); } while (!isPrime(p));
+    if (!pF.value) { pF.value = p.toString(); } 
+    else if (!qF.value) { qF.value = p.toString(); btn.disabled = true; }
+}
+
+function resetPrimes() {
+    document.getElementById('p_in').value = ""; document.getElementById('q_in').value = "";
+    document.getElementById('p_gen_btn').disabled = false;
+    document.getElementById('stored_n').innerText = "-"; document.getElementById('stored_e').innerText = "-"; document.getElementById('stored_d').innerText = "-";
+    lastD = "-";
+}
+
+function calculateAndStore() {
+    try {
+        const p = BigInt(document.getElementById('p_in').value);
+        const q = BigInt(document.getElementById('q_in').value);
+        const e = BigInt(document.getElementById('e_in').value);
+        const n = p * q;
+        const d = modInverse(e, (p - 1n) * (q - 1n));
+        
+        lastE = e.toString();
+        lastD = d.toString();
+        
+        document.getElementById('n').value = n.toString();
+        document.getElementById('stored_n').innerText = n.toString();
+        document.getElementById('stored_e').innerText = lastE;
+        document.getElementById('stored_d').innerText = lastD;
+        
+        alert("計算完了。'USE e' や 'USE d' ボタンが使えるようになりました！");
+    } catch(e) { alert("素数を2つ生成してください"); }
+}
+
+function process(isEncrypt) {
+    const resDiv = document.getElementById('res-area');
+    try {
+        const n = BigInt(document.getElementById('n').value.replace(/[^0-9]/g, ''));
+        const k = BigInt(document.getElementById('k').value.replace(/[^0-9]/g, ''));
+        const input = document.getElementById('data').value.trim();
+
+        if (isEncrypt) {
+            const encrypted = Array.from(input).map(char => {
+                const m = BigInt(char.charCodeAt(0));
+                return modExp(m, k, n).toString();
+            }).join(', ');
+            resDiv.innerText = encrypted;
+        } else {
+            const decrypted = input.split(',').map(s => {
+                const c = BigInt(s.trim().replace(/[^0-9]/g, ''));
+                return String.fromCharCode(Number(modExp(c, k, n)));
+            }).join('');
+            resDiv.innerText = decrypted;
+        }
+    } catch (e) { resDiv.innerText = "エラー: " + e.message; }
+}
+</script>
+</body>
+</html>

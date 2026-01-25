@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RSA暗号 完全解説 & インタラクティブデモ</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2em;
+            font-weight: 600;
+        }
+
+        header p {
+            font-size: 1em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 0;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            font-weight: 600;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #555;
+            margin: 15px 0 10px 0;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        .formula {
+            background: #f9f9f9;
+            padding: 12px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95em;
+            border: 1px solid #e0e0e0;
+            overflow-x: auto;
+        }
+
+        .step {
+            background: #fafafa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 3px solid #2c3e50;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #2c3e50;
+            color: white;
+            width: 24px;
+            height: 24px;
+            text-align: center;
+            line-height: 24px;
+            margin-right: 8px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .demo-container {
+            background: white;
+            padding: 25px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        .input-group input:focus, .input-group textarea:focus {
+            outline: none;
+            border-color: #2c3e50;
+        }
+
+        .input-group textarea {
+            min-height: 80px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+        }
+
+        .input-group small {
+            display: block;
+            margin-top: 4px;
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        button {
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 0.95em;
+            cursor: pointer;
+            font-weight: 500;
+            margin: 5px 5px 5px 0;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #34495e;
+        }
+
+        button:active {
+            background: #1a252f;
+        }
+
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: #7f8c8d;
+        }
+
+        button.secondary:hover {
+            background: #95a5a6;
+        }
+
+        .step-result {
+            background: #ecf0f1;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            border-left: 3px solid #3498db;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result {
+            background: #e8f5e9;
+            border: 1px solid #81c784;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .result.error {
+            background: #ffebee;
+            border-color: #e57373;
+        }
+
+        .calculation-steps {
+            background: #fff8e1;
+            border: 1px solid #ffd54f;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            font-size: 0.85em;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 3px solid #2196f3;
+            padding: 12px;
+            margin: 12px 0;
+            font-size: 0.9em;
+        }
+
+        .warning-box {
+            background: #fff3e0;
+            border-left: 3px solid #ff9800;
+            padding: 12px;
+            margin: 12px 0;
+            font-size: 0.9em;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+            
+            header h1 {
+                font-size: 1.5em;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            body {
+                padding: 10px;
+            }
+
+            .demo-container {
+                padding: 15px;
+            }
+
+            button {
+                width: 100%;
+                margin: 5px 0;
+            }
+
+            .input-group input,
+            .input-group textarea {
+                font-size: 16px;
+            }
+        }
+
+        .highlight {
+            background: #fff176;
+            padding: 2px 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+
+        table th, table td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #e0e0e0;
+        }
+
+        table th {
+            background: #f5f5f5;
+            color: #333;
+            font-weight: 600;
+        }
+
+        table tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        ul {
+            margin-left: 20px;
+        }
+
+        ul li {
+            margin: 8px 0;
+        }
+
+        p {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>RSA暗号 完全解説</h1>
+            <p>インタラクティブデモで学ぶ公開鍵暗号の仕組み</p>
+            <p style="margin-top: 15px; font-size: 0.9em;">
+                便利なツールはこちら: <a href="https://kazuhiro-tokumoto.github.io/chatapps/dist/rsa.html" target="_blank" style="color: #fff; text-decoration: underline;">https://kazuhiro-tokumoto.github.io/chatapps/dist/rsa.html</a>
+            </p>
+        </header>
+
+        <div class="content">
+            <!-- RSA暗号とは -->
+            <div class="section">
+                <h2>RSA暗号とは？</h2>
+                <p>RSA暗号は、1977年にロナルド・リベスト（Rivest）、アディ・シャミア（Shamir）、レオナルド・エーデルマン（Adleman）の3人によって発明された公開鍵暗号方式です。3人の名前の頭文字を取って「RSA」と名付けられました。</p>
+                
+                <div class="info-box">
+                    <strong>公開鍵暗号とは？</strong><br>
+                    暗号化に使う鍵（公開鍵）と復号化に使う鍵（秘密鍵）が異なる暗号方式です。公開鍵は誰でも使えるように公開し、秘密鍵は受信者だけが持っています。
+                </div>
+
+                <h3>RSA暗号の安全性の根拠</h3>
+                <p>RSA暗号の安全性は<span class="highlight">「大きな数の素因数分解は非常に難しい」</span>という数学的な性質に基づいています。</p>
+                
+                <div class="formula">
+例：15 = 3 × 5 （簡単に素因数分解できる）<br>
+しかし...<br>
+200桁の数を素因数分解するのは、現在のスーパーコンピュータでも数千年かかる！
+                </div>
+            </div>
+
+            <!-- RSA暗号の仕組み -->
+            <div class="section">
+                <h2>RSA暗号の仕組み</h2>
+                
+                <h3>ステップ1: 鍵の生成（受信者が行う）</h3>
+                
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>2つの大きな素数 p と q を選ぶ</strong>
+                    <div class="formula">例：p = 61, q = 53</div>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>n = p × q を計算する</strong>
+                    <div class="formula">n = 61 × 53 = 3233</div>
+                    <p style="margin-top: 10px;">この n が「法（modulus）」と呼ばれ、公開鍵の一部になります。</p>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <strong>φ(n) = (p-1) × (q-1) を計算する</strong>
+                    <div class="formula">φ(3233) = (61-1) × (53-1) = 60 × 52 = 3120</div>
+                    <p style="margin-top: 10px;">φ(n) はオイラーのトーシェント関数と呼ばれます。これは秘密にします。</p>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <strong>φ(n) と互いに素な整数 e を選ぶ</strong>
+                    <div class="formula">例：e = 17</div>
+                    <p style="margin-top: 10px;">「互いに素」とは、最大公約数が1であることを意味します。<br>
+                    gcd(17, 3120) = 1 なので、17は適切です。</p>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">5</span>
+                    <strong>e × d ≡ 1 (mod φ(n)) となる d を計算する</strong>
+                    <div class="formula">17 × d ≡ 1 (mod 3120)<br>d = 2753</div>
+                    <p style="margin-top: 10px;">この d が秘密鍵になります。拡張ユークリッド互除法で計算できます。</p>
+                </div>
+
+                <div class="info-box">
+                    <strong>鍵のまとめ</strong><br>
+                    <strong>公開鍵：</strong> (n, e) = (3233, 17) → 誰でも使える<br>
+                    <strong>秘密鍵：</strong> (n, d) = (3233, 2753) → 受信者だけが持つ<br>
+                    <strong>秘密情報：</strong> p, q, φ(n) → 絶対に公開しない
+                </div>
+
+                <h3>ステップ2: 暗号化（送信者が行う）</h3>
+                
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>メッセージを数値化する</strong>
+                    <div class="formula">例：メッセージ "HELLO" → 数値 M = 65</div>
+                </div>
+
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <strong>公開鍵 (n, e) を使って暗号化する</strong>
+                    <div class="formula">暗号文 C = M<sup>e</sup> mod n<br>
+C = 65<sup>17</sup> mod 3233 = 2790</div>
+                    <p style="margin-top: 10px;">この 2790 が暗号文です。これを受信者に送ります。</p>
+                </div>
+
+                <h3>ステップ3: 復号化（受信者が行う）</h3>
+                
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <strong>秘密鍵 (n, d) を使って復号化する</strong>
+                    <div class="formula">元のメッセージ M = C<sup>d</sup> mod n<br>
+M = 2790<sup>2753</sup> mod 3233 = 65</div>
+                    <p style="margin-top: 10px;">元のメッセージ 65 が復元されました！</p>
+                </div>
+
+                <div class="warning-box">
+                    <strong>なぜ復号できるのか？</strong><br>
+                    フェルマーの小定理とオイラーの定理により、以下が成り立ちます：<br>
+                    <code>M<sup>ed</sup> ≡ M (mod n)</code><br>
+                    つまり、暗号化と復号化を順に行うと元に戻るという数学的な保証があります。
+                </div>
+            </div>
+
+            <!-- デモセクション -->
+            <div class="section">
+                <h2>インタラクティブデモ</h2>
+                
+                <div class="demo-container">
+                    <h3>ステップ1: 素数 p, q の選択</h3>
+                    
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>素数 p:</label>
+                            <input type="number" id="prime-p" value="1000000007" min="2">
+                            <button onclick="checkPrime('p')">素数チェック</button>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>素数 q:</label>
+                            <input type="number" id="prime-q" value="1000000009" min="2">
+                            <button onclick="checkPrime('q')">素数チェック</button>
+                        </div>
+                    </div>
+
+                    <button onclick="generateRandomPrimes()" class="secondary">ランダムな素数を生成</button>
+                    
+                    <div id="step1-result"></div>
+                </div>
+
+                <div class="demo-container">
+                    <h3>ステップ2: n = p × q を計算</h3>
+                    
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>p:</label>
+                            <input type="number" id="calc-n-p" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>q:</label>
+                            <input type="number" id="calc-n-q" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>n = p × q:</label>
+                            <input type="number" id="calc-n-result" value="">
+                        </div>
+                    </div>
+                    
+                    <button onclick="calculateN()">n を計算する</button>
+                    <div id="step2-result"></div>
+                </div>
+
+                <div class="demo-container">
+                    <h3>ステップ3: φ(n) = (p-1) × (q-1) を計算</h3>
+                    
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>p-1:</label>
+                            <input type="number" id="calc-phi-p1" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>q-1:</label>
+                            <input type="number" id="calc-phi-q1" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>φ(n) = (p-1) × (q-1):</label>
+                            <input type="number" id="calc-phi-result" value="">
+                        </div>
+                    </div>
+                    
+                    <button onclick="calculatePhi()">φ(n) を計算する</button>
+                    <div id="step3-result"></div>
+                </div>
+
+                <div class="demo-container">
+                    <h3>ステップ4: 公開鍵指数 e を選択</h3>
+                    
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>e の値（φ(n) と互いに素である必要があります）:</label>
+                            <input type="number" id="public-e" value="17" min="3">
+                            <small>一般的には e = 65537 が使われます</small>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>φ(n):</label>
+                            <input type="number" id="select-e-phi" value="">
+                        </div>
+                    </div>
+
+                    <button onclick="selectE()">e を確定する</button>
+                    <div id="step4-result"></div>
+                </div>
+
+                <div class="demo-container">
+                    <h3>ステップ5: 秘密鍵 d を計算</h3>
+                    <p style="margin-bottom: 10px;">e × d ≡ 1 (mod φ(n)) となる d を拡張ユークリッド互除法で計算します</p>
+                    
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>e:</label>
+                            <input type="number" id="calc-d-e" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>φ(n):</label>
+                            <input type="number" id="calc-d-phi" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>d:</label>
+                            <input type="number" id="calc-d-result" value="">
+                        </div>
+                    </div>
+                    
+                    <button onclick="calculateD()">d を計算する</button>
+                    <div id="step5-result"></div>
+                </div>
+
+                <div class="demo-container">
+                    <h3>生成された鍵</h3>
+                    <div id="final-keys"></div>
+                    
+                    <div style="margin-top: 20px;">
+                        <button onclick="generateKeyQR()">公開鍵をQRコードで表示</button>
+                        <button onclick="generatePrivateKeyQR()" class="secondary">秘密鍵をQRコードで表示</button>
+                    </div>
+                    
+                    <div id="qr-container" style="margin-top: 20px; text-align: center;"></div>
+                </div>
+            </div>
+
+            <!-- 暗号化セクション -->
+            <div class="section">
+                <h2>暗号化</h2>
+                
+                <div class="demo-container">
+                    <h3>メッセージを暗号化する</h3>
+                    <p>C = M<sup>e</sup> mod n の計算を行います</p>
+                    
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>M (メッセージ):</label>
+                            <input type="number" id="encrypt-m" value="65" min="0">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>e (公開鍵指数):</label>
+                            <input type="number" id="encrypt-e" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>n (法):</label>
+                            <input type="number" id="encrypt-n" value="">
+                        </div>
+                    </div>
+
+                    <button onclick="encryptMessage()">暗号化を実行</button>
+                    <button onclick="generateCipherQR()" class="secondary">暗号文をQRコードで表示</button>
+                    
+                    <div id="encrypt-result"></div>
+                    <div id="cipher-qr-container" style="margin-top: 15px; text-align: center;"></div>
+                </div>
+            </div>
+
+            <!-- 復号化セクション -->
+            <div class="section">
+                <h2>復号化</h2>
+                
+                <div class="demo-container">
+                    <h3>暗号文を復号化する</h3>
+                    <p>M = C<sup>d</sup> mod n の計算を行います</p>
+                    
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>C (暗号文):</label>
+                            <input type="number" id="decrypt-c" value="" min="0">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>d (秘密鍵指数):</label>
+                            <input type="number" id="decrypt-d" value="">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>n (法):</label>
+                            <input type="number" id="decrypt-n" value="">
+                        </div>
+                    </div>
+
+                    <button onclick="decryptMessage()">復号化を実行</button>
+                    
+                    <div id="decrypt-result"></div>
+                </div>
+            </div>
+
+            <!-- テキスト暗号化セクション -->
+            <div class="section">
+                <h2>テキストの暗号化・復号化</h2>
+                
+                <div class="demo-container">
+                    <h3>テキストを暗号化する</h3>
+                    <p>各文字を文字コードに変換してから暗号化します</p>
+                    
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>e (公開鍵指数):</label>
+                            <input type="number" id="text-encrypt-e" placeholder="65537">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>n (法):</label>
+                            <input type="number" id="text-encrypt-n" placeholder="自動入力されます">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>暗号化するテキスト:</label>
+                        <textarea id="text-message" placeholder="ここにメッセージを入力...">Hello</textarea>
+                    </div>
+
+                    <button onclick="encryptText()">テキストを暗号化</button>
+                    <button onclick="generateTextCipherQR()" class="secondary">暗号文をQRコードで表示</button>
+                    
+                    <div id="text-encrypt-result"></div>
+                    <div id="text-cipher-qr-container" style="margin-top: 15px; text-align: center;"></div>
+                </div>
+
+                <div class="demo-container">
+                    <h3>暗号文を復号化する</h3>
+                    <p>カンマ区切りの暗号文を元のテキストに戻します</p>
+                    
+                    <div class="grid-3">
+                        <div class="input-group">
+                            <label>d (秘密鍵指数):</label>
+                            <input type="number" id="text-decrypt-d" placeholder="自動入力されます">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>n (法):</label>
+                            <input type="number" id="text-decrypt-n" placeholder="自動入力されます">
+                        </div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label>暗号文（カンマ区切り）:</label>
+                        <textarea id="text-ciphertext" placeholder="例: 2790,1234,5678,..."></textarea>
+                    </div>
+
+                    <button onclick="decryptText()">テキストを復号化</button>
+                    
+                    <div id="text-decrypt-result"></div>
+                </div>
+
+                <div class="demo-container">
+                    <h3>QRコードから読み取る</h3>
+                    <p>QRコードをスキャンして、鍵や暗号文を読み込みます。</p>
+                    
+                    <button onclick="startQRScan()">QRコードをスキャン</button>
+                    <button onclick="stopQRScan()" class="secondary">スキャン停止</button>
+                    
+                    <div id="qr-reader" style="width: 100%; max-width: 500px; margin: 20px auto; display: none;"></div>
+                    <div id="qr-scan-result" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+
+            <!-- 数学的背景 -->
+            <div class="section">
+                <h2>数学的背景</h2>
+                
+                <h3>フェルマーの小定理</h3>
+                <div class="formula">
+p が素数で、a が p の倍数でないとき：<br>
+a<sup>p-1</sup> ≡ 1 (mod p)
+                </div>
+
+                <h3>オイラーの定理</h3>
+                <div class="formula">
+gcd(a, n) = 1 のとき：<br>
+a<sup>φ(n)</sup> ≡ 1 (mod n)
+                </div>
+
+                <h3>中国剰余定理（CRT）</h3>
+                <p>RSA暗号の高速化に使われます。p と q を使って、n を法とする計算を p を法とする計算と q を法とする計算に分割できます。</p>
+                
+                <div class="formula">
+M<sup>d</sup> mod n を計算する代わりに：<br>
+M<sub>p</sub> = M<sup>d mod (p-1)</sup> mod p<br>
+M<sub>q</sub> = M<sup>d mod (q-1)</sup> mod q<br>
+そして M を復元する（約4倍高速化）
+                </div>
+            </div>
+
+            <!-- セキュリティに関する注意 -->
+            <div class="section">
+                <h2>セキュリティと注意点</h2>
+                
+                <h3>安全な鍵長</h3>
+                <table>
+                    <tr>
+                        <th>鍵長（ビット）</th>
+                        <th>安全性</th>
+                        <th>用途</th>
+                    </tr>
+                    <tr>
+                        <td>512ビット</td>
+                        <td>危険</td>
+                        <td>既に解読可能</td>
+                    </tr>
+                    <tr>
+                        <td>1024ビット</td>
+                        <td>低い</td>
+                        <td>推奨されない</td>
+                    </tr>
+                    <tr>
+                        <td>2048ビット</td>
+                        <td>安全</td>
+                        <td>現在の標準</td>
+                    </tr>
+                    <tr>
+                        <td>4096ビット</td>
+                        <td>非常に安全</td>
+                        <td>長期的な機密情報</td>
+                    </tr>
+                </table>
+
+                <h3>よくある攻撃とその対策</h3>
+                
+                <div class="warning-box">
+                    <strong>注意: 共通の n を使い回してはいけない</strong><br>
+                    複数のユーザーが同じ n で異なる e, d を使うと、簡単に素因数分解されてしまいます。
+                </div>
+
+                <div class="warning-box">
+                    <strong>注意: 小さい e を使う場合の注意</strong><br>
+                    e = 3 など小さい値を使うと、特定の攻撃に弱くなる可能性があります。通常は e = 65537 が推奨されます。
+                </div>
+
+                <div class="warning-box">
+                    <strong>注意: パディングを使用する</strong><br>
+                    生のRSA暗号は同じメッセージから同じ暗号文が生成されます。実際にはOAEPなどのパディングを使用します。
+                </div>
+            </div>
+
+            <!-- 実用例 -->
+            <div class="section">
+                <h2>実用例</h2>
+                
+                <h3>RSA暗号が使われている場所</h3>
+                <ul style="line-height: 2;">
+                    <li><strong>HTTPS通信</strong> - WebブラウザとサーバーのSSL/TLS通信</li>
+                    <li><strong>電子メール</strong> - S/MIMEやPGPによる暗号化</li>
+                    <li><strong>デジタル署名</strong> - ソフトウェアの正当性確認</li>
+                    <li><strong>電子決済</strong> - クレジットカード情報の保護</li>
+                    <li><strong>SSH</strong> - リモートサーバーへの安全な接続</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let p = 0n, q = 0n, n = 0n, phi_n = 0n, e = 0n, d = 0n;
+
+        // 小さい素数のリスト
+        const smallPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97];
+
+        // Uint8ArrayをBigIntに変換
+        function bytesToBigInt(bytes) {
+            let result = 0n;
+            for (let i = 0; i < bytes.length; i++) {
+                result = (result << 8n) | BigInt(bytes[i]);
+            }
+            return result;
+        }
+
+        // 素数判定（Miller-Rabin確率的素数判定）
+        function isPrime(num, k = 5) {
+            const n = BigInt(num);
+            
+            if (n <= 3n) return n > 1n;
+            if (!(n & 1n)) return false;  // 偶数チェック
+            
+            // 小さい素数で試し割り
+            for (let j = 0; j < smallPrimes.length; j++) {
+                const p = smallPrimes[j];
+                if (n === BigInt(p)) return true;
+                if (n < BigInt(p) * BigInt(p)) break;
+                if (n % BigInt(p) === 0n) return false;
+            }
+            
+            // Miller-Rabin判定の準備
+            let d = n - 1n;
+            let s = 0;
+            while (!(d & 1n)) {
+                d >>= 1n;
+                s++;
+            }
+            
+            const nm1 = n - 1n;
+            const bases = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
+            
+            for (let i = 0; i < k; i++) {
+                const a = i < bases.length ? bases[i] : 2n + BigInt(Math.floor(Math.random() * Number(nm1 - 2n)));
+                
+                let x = modExp(a, d, n);
+                if (x === 1n || x === nm1) continue;
+                
+                let composite = true;
+                for (let r = 1; r < s; r++) {
+                    x = modExp(x, 2n, n);
+                    if (x === nm1) {
+                        composite = false;
+                        break;
+                    }
+                    if (x === 1n) return false;
+                }
+                
+                if (composite) return false;
+            }
+            
+            return true;
+        }
+
+        // 素数チェック
+        function checkPrime(which) {
+            const input = document.getElementById(`prime-${which}`);
+            const num = parseInt(input.value);
+            
+            if (isPrime(num)) {
+                alert(`${num} は素数です！`);
+                input.style.borderColor = '#27ae60';
+            } else {
+                alert(`${num} は素数ではありません。`);
+                input.style.borderColor = '#e74c3c';
+            }
+        }
+
+        // 大きな素数を生成（暗号学的に安全な乱数使用）
+        function generateLargePrime(bits) {
+            const byteLen = Math.ceil(bits / 8);
+            const uint8 = new Uint8Array(byteLen);
+            const min = 1n << BigInt(bits - 1);
+            const e = 65537n;
+            
+            while (true) {
+                crypto.getRandomValues(uint8);
+                let p = bytesToBigInt(uint8) | 1n | min;
+                
+                // 小さい素数で事前チェック（高速化）
+                const remainders = new Int32Array(smallPrimes.length);
+                for (let j = 0; j < smallPrimes.length; j++) {
+                    remainders[j] = Number(p % BigInt(smallPrimes[j]));
+                }
+                
+                for (let step = 0; step < 2000; step++) {
+                    let isComposite = false;
+                    for (let j = 0; j < smallPrimes.length; j++) {
+                        if (remainders[j] === 0) {
+                            isComposite = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!isComposite && (p - 1n) % e !== 0n) {
+                        // 軽い素数チェック → 厳密な素数チェック
+                        if (isPrime(p, 1)) {
+                            if (isPrime(p, 4)) {
+                                return p;
+                            }
+                        }
+                    }
+                    
+                    p += 2n;
+                    for (let j = 0; j < smallPrimes.length; j++) {
+                        const pj = smallPrimes[j];
+                        let r = remainders[j] + 2;
+                        if (r >= pj) {
+                            r -= pj;
+                        }
+                        remainders[j] = r;
+                    }
+                }
+            }
+        }
+
+        // ランダムな素数生成（10桁の素数を生成）
+        function generateRandomPrimes() {
+            const resultDiv = document.getElementById('step1-result');
+            resultDiv.innerHTML = '<div class="step-result">素数生成中... 数秒お待ちください</div>';
+            
+            // UIをブロックしないために少し待つ
+            setTimeout(() => {
+                try {
+                    // 10桁の素数を生成（約33ビット）
+                    const bits = 33;
+                    
+                    console.log('p生成中...');
+                    const newP = generateLargePrime(bits);
+                    console.log('p生成完了:', newP);
+                    
+                    console.log('q生成中...');
+                    let newQ = generateLargePrime(bits);
+                    while (newQ === newP) {
+                        newQ = generateLargePrime(bits);
+                    }
+                    console.log('q生成完了:', newQ);
+                    
+                    document.getElementById('prime-p').value = newP.toString();
+                    document.getElementById('prime-q').value = newQ.toString();
+                    
+                    // ステップ2の欄にも反映（nは計算ボタンを押すまで空欄）
+                    document.getElementById('calc-n-p').value = newP.toString();
+                    document.getElementById('calc-n-q').value = newQ.toString();
+                    document.getElementById('calc-n-result').value = '';
+                    
+                    let result = `<div class="step-result">`;
+                    result += `ランダムに生成された素数:<br>`;
+                    result += `p = ${newP} (${newP.toString().length}桁)<br>`;
+                    result += `q = ${newQ} (${newQ.toString().length}桁)<br>`;
+                    result += `n = p × q は約 ${(newP * newQ).toString().length} 桁になります`;
+                    result += `</div>`;
+                    resultDiv.innerHTML = result;
+                } catch (error) {
+                    console.error('素数生成エラー:', error);
+                    resultDiv.innerHTML = '<div class="result error">エラー: 素数生成に失敗しました</div>';
+                }
+            }, 100);
+        }
+
+        // ステップ2: n を計算
+        function calculateN() {
+            // 入力欄から値を取得（ステップ1の値も使う）
+            let inputP = document.getElementById('calc-n-p').value;
+            let inputQ = document.getElementById('calc-n-q').value;
+            
+            // 空欄の場合はステップ1から取得
+            if (!inputP) {
+                inputP = document.getElementById('prime-p').value;
+                document.getElementById('calc-n-p').value = inputP;
+            }
+            if (!inputQ) {
+                inputQ = document.getElementById('prime-q').value;
+                document.getElementById('calc-n-q').value = inputQ;
+            }
+            
+            p = BigInt(inputP);
+            q = BigInt(inputQ);
+
+            if (!isPrime(p)) {
+                showError('step2-result', `エラー: ${p} は素数ではありません。`);
+                return;
+            }
+            if (!isPrime(q)) {
+                showError('step2-result', `エラー: ${q} は素数ではありません。`);
+                return;
+            }
+            if (p === q) {
+                showError('step2-result', 'エラー: p と q は異なる素数である必要があります。');
+                return;
+            }
+
+            // 計算実行
+            n = p * q;
+
+            // 計算結果を入力欄に設定
+            document.getElementById('calc-n-result').value = n.toString();
+
+            let result = `<div class="step-result">`;
+            result += `<strong>計算過程:</strong><br><br>`;
+            result += `n = p × q<br>`;
+            result += `n = ${p} × ${q}<br>`;
+            result += `<strong>n = ${n}</strong><br><br>`;
+            result += `この n が公開鍵の一部（法）になります。`;
+            result += `</div>`;
+            
+            document.getElementById('step2-result').innerHTML = result;
+
+            // 次のステップの入力欄も更新
+            document.getElementById('calc-phi-p1').value = (p - 1n).toString();
+            document.getElementById('calc-phi-q1').value = (q - 1n).toString();
+            // φ(n)の結果欄はクリア
+            document.getElementById('calc-phi-result').value = '';
+        }
+
+        // ステップ3: φ(n) を計算
+        function calculatePhi() {
+            // 入力欄から値を取得
+            let inputP1 = document.getElementById('calc-phi-p1').value;
+            let inputQ1 = document.getElementById('calc-phi-q1').value;
+            
+            // 空欄の場合は自動計算
+            if (!inputP1) {
+                if (p === 0n) {
+                    showError('step3-result', 'エラー: 先に n を計算してください。');
+                    return;
+                }
+                inputP1 = (p - 1n).toString();
+                document.getElementById('calc-phi-p1').value = inputP1;
+            }
+            if (!inputQ1) {
+                if (q === 0n) {
+                    showError('step3-result', 'エラー: 先に n を計算してください。');
+                    return;
+                }
+                inputQ1 = (q - 1n).toString();
+                document.getElementById('calc-phi-q1').value = inputQ1;
+            }
+
+            const bigP1 = BigInt(inputP1);
+            const bigQ1 = BigInt(inputQ1);
+            
+            // 計算実行
+            phi_n = bigP1 * bigQ1;
+
+            // 計算結果を入力欄に設定
+            document.getElementById('calc-phi-result').value = phi_n.toString();
+
+            let result = `<div class="step-result">`;
+            result += `<strong>計算過程:</strong><br><br>`;
+            result += `φ(n) = (p - 1) × (q - 1)<br>`;
+            result += `φ(n) = ${bigP1} × ${bigQ1}<br>`;
+            result += `<strong>φ(n) = ${phi_n}</strong><br><br>`;
+            result += `φ(n) はオイラーのトーシェント関数で、n と互いに素な正整数の個数を表します。<br>`;
+            result += `これは秘密情報として保管されます。`;
+            result += `</div>`;
+            
+            document.getElementById('step3-result').innerHTML = result;
+
+            // 次のステップの入力欄も更新
+            document.getElementById('select-e-phi').value = phi_n.toString();
+        }
+
+        // ステップ4: e を選択
+        function selectE() {
+            // φ(n)を入力欄から取得
+            let inputPhi = document.getElementById('select-e-phi').value;
+            
+            // 空欄の場合
+            if (!inputPhi) {
+                if (phi_n === 0n) {
+                    showError('step4-result', 'エラー: 先に φ(n) を計算してください。');
+                    return;
+                }
+                inputPhi = phi_n.toString();
+                document.getElementById('select-e-phi').value = inputPhi;
+            } else {
+                phi_n = BigInt(inputPhi);
+            }
+
+            e = BigInt(document.getElementById('public-e').value);
+
+            if (e < 3n) {
+                showError('step4-result', 'エラー: e は 3 以上である必要があります。');
+                return;
+            }
+
+            if (e >= phi_n) {
+                showError('step4-result', `エラー: e は φ(n) = ${phi_n} より小さい必要があります。`);
+                return;
+            }
+
+            const gcdValue = gcd(e, phi_n);
+            if (gcdValue !== 1n) {
+                showError('step4-result', `エラー: e = ${e} と φ(n) = ${phi_n} は互いに素ではありません。<br>gcd(${e}, ${phi_n}) = ${gcdValue}`);
+                return;
+            }
+
+            let result = `<div class="step-result">`;
+            result += `<strong>検証:</strong><br><br>`;
+            result += `gcd(e, φ(n)) = gcd(${e}, ${phi_n})<br><br>`;
+            result += `ユークリッドの互除法で計算:<br>`;
+            
+            // ユークリッドの互除法の過程を表示
+            let a = phi_n, b = e;
+            let steps = [];
+            while (b !== 0n) {
+                const quotient = a / b;
+                const remainder = a % b;
+                steps.push(`${a} = ${b} × ${quotient} + ${remainder}`);
+                a = b;
+                b = remainder;
+            }
+            result += steps.join('<br>') + '<br><br>';
+            result += `<strong>gcd(${e}, ${phi_n}) = 1 (OK)</strong><br><br>`;
+            result += `e と φ(n) は互いに素なので、e = ${e} は公開鍵指数として使用できます。`;
+            result += `</div>`;
+            
+            document.getElementById('step4-result').innerHTML = result;
+
+            // 暗号化フィールドに自動入力
+            document.getElementById('encrypt-e').value = e.toString();
+            document.getElementById('encrypt-n').value = n.toString();
+            
+            // テキスト暗号化セクションにも自動入力
+            document.getElementById('text-encrypt-e').value = e.toString();
+            document.getElementById('text-encrypt-n').value = n.toString();
+
+            // 次のステップの入力欄も更新
+            document.getElementById('calc-d-e').value = e.toString();
+            document.getElementById('calc-d-phi').value = phi_n.toString();
+            
+            // 復号化フィールドのnも更新
+            document.getElementById('decrypt-n').value = n.toString();
+            
+            // テキスト復号化セクションのnも更新
+            document.getElementById('text-decrypt-n').value = n.toString();
+        }
+
+        // ステップ5: d を計算
+        function calculateD() {
+            // 入力欄から値を取得
+            let inputE = document.getElementById('calc-d-e').value;
+            let inputPhi = document.getElementById('calc-d-phi').value;
+            
+            // 空欄の場合
+            if (!inputE) {
+                if (e === 0n) {
+                    showError('step5-result', 'エラー: 先に e を選択してください。');
+                    return;
+                }
+                inputE = e.toString();
+                document.getElementById('calc-d-e').value = inputE;
+            } else {
+                e = BigInt(inputE);
+            }
+            
+            if (!inputPhi) {
+                if (phi_n === 0n) {
+                    showError('step5-result', 'エラー: 先に φ(n) を計算してください。');
+                    return;
+                }
+                inputPhi = phi_n.toString();
+                document.getElementById('calc-d-phi').value = inputPhi;
+            } else {
+                phi_n = BigInt(inputPhi);
+            }
+
+            const bigE = BigInt(inputE);
+            const bigPhi = BigInt(inputPhi);
+
+            // 計算実行
+            d = modInverse(bigE, bigPhi);
+            if (d === null) {
+                showError('step5-result', 'エラー: 秘密鍵を計算できませんでした。');
+                return;
+            }
+
+            // 計算結果を入力欄に設定
+            document.getElementById('calc-d-result').value = d.toString();
+
+            let result = `<div class="step-result">`;
+            result += `<strong>拡張ユークリッド互除法で d を計算:</strong><br><br>`;
+            result += `目標: e × d ≡ 1 (mod φ(n))<br>`;
+            result += `つまり: ${bigE} × d ≡ 1 (mod ${bigPhi})<br><br>`;
+            
+            // 拡張ユークリッド互除法の詳細を表示
+            const extGcdResult = extendedGCDDetailed(bigPhi, bigE);
+            result += `<strong>計算過程:</strong><br>`;
+            result += extGcdResult.steps.join('<br>') + '<br><br>';
+            
+            result += `解: d = ${extGcdResult.y}<br><br>`;
+            
+            // dが負の場合の調整
+            if (extGcdResult.y < 0) {
+                result += `d が負なので、φ(n) を足して正の値にします:<br>`;
+                result += `d = ${extGcdResult.y} + ${bigPhi} = ${d}<br><br>`;
+            }
+            
+            // 検証
+            const verification = (bigE * d) % bigPhi;
+            result += `<strong>検証:</strong><br>`;
+            result += `e × d mod φ(n) = ${bigE} × ${d} mod ${bigPhi}<br>`;
+            result += `= ${bigE * d} mod ${bigPhi}<br>`;
+            result += `= ${verification} (OK)<br><br>`;
+            result += `<strong>秘密鍵 d = ${d}</strong>`;
+            result += `</div>`;
+            
+            document.getElementById('step5-result').innerHTML = result;
+
+            // 復号化フィールドに自動入力
+            document.getElementById('decrypt-d').value = d.toString();
+            document.getElementById('decrypt-n').value = n.toString();
+            
+            // テキスト復号化セクションにも自動入力
+            document.getElementById('text-decrypt-d').value = d.toString();
+            document.getElementById('text-decrypt-n').value = n.toString();
+
+            // 最終的な鍵を表示
+            displayFinalKeys();
+        }
+
+        // 最終的な鍵を表示
+        function displayFinalKeys() {
+            let result = `<div class="result">`;
+            result += `<strong>公開鍵（誰でも使える）:</strong><br>`;
+            result += `n = ${n}<br>`;
+            result += `e = ${e}<br><br>`;
+            result += `<strong>秘密鍵（受信者だけが持つ）:</strong><br>`;
+            result += `d = ${d}<br><br>`;
+            result += `<strong>秘密情報（絶対に公開しない）:</strong><br>`;
+            result += `p = ${p}<br>`;
+            result += `q = ${q}<br>`;
+            result += `φ(n) = ${phi_n}`;
+            result += `</div>`;
+            
+            document.getElementById('final-keys').innerHTML = result;
+        }
+
+        // QRコード生成関数
+        function generateQRCode(elementId, data, title, size = 256) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = ''; // クリア
+            
+            const wrapper = document.createElement('div');
+            wrapper.style.marginTop = '15px';
+            wrapper.style.padding = '20px';
+            wrapper.style.background = '#f9f9f9';
+            wrapper.style.border = '1px solid #ddd';
+            wrapper.style.display = 'inline-block';
+            
+            const titleElem = document.createElement('h4');
+            titleElem.textContent = title;
+            titleElem.style.marginBottom = '10px';
+            wrapper.appendChild(titleElem);
+            
+            const qrDiv = document.createElement('div');
+            wrapper.appendChild(qrDiv);
+            
+            const copyButton = document.createElement('button');
+            copyButton.textContent = 'データをコピー';
+            copyButton.style.marginTop = '10px';
+            copyButton.onclick = () => {
+                navigator.clipboard.writeText(data).then(() => {
+                    alert('コピーしました！');
+                });
+            };
+            wrapper.appendChild(copyButton);
+            
+            container.appendChild(wrapper);
+            
+            try {
+                new QRCode(qrDiv, {
+                    text: data,
+                    width: size,
+                    height: size,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } catch (error) {
+                console.error('QRコード生成エラー:', error);
+                qrDiv.innerHTML = '<div style="color: red; padding: 20px;">QRコード生成に失敗しました。データが大きすぎる可能性があります。</div>';
+            }
+        }
+
+        // 公開鍵をQRコードで表示
+        function generateKeyQR() {
+            if (n === 0 || e === 0) {
+                alert('先に鍵を生成してください');
+                return;
+            }
+            
+            const keyData = JSON.stringify({
+                type: 'public_key',
+                n: n.toString(),
+                e: e.toString()
+            });
+            
+            generateQRCode('qr-container', keyData, '公開鍵 (n, e)');
+        }
+
+        // 秘密鍵をQRコードで表示
+        function generatePrivateKeyQR() {
+            if (n === 0 || d === 0) {
+                alert('先に鍵を生成してください');
+                return;
+            }
+            
+            const keyData = JSON.stringify({
+                type: 'private_key',
+                n: n.toString(),
+                d: d.toString()
+            });
+            
+            generateQRCode('qr-container', keyData, '秘密鍵 (n, d) - 絶対に他人に見せないこと！');
+        }
+
+        // 暗号文（単一）をQRコードで表示
+        function generateCipherQR() {
+            const C = document.getElementById('decrypt-c').value;
+            if (!C) {
+                alert('先に暗号化を実行してください');
+                return;
+            }
+            
+            const cipherData = JSON.stringify({
+                type: 'cipher',
+                c: C,
+                n: n.toString(),
+                e: e.toString()
+            });
+            
+            generateQRCode('cipher-qr-container', cipherData, '暗号文');
+        }
+
+        // テキスト暗号文をQRコードで表示
+        function generateTextCipherQR() {
+            // 暗号化結果から直接取得
+            const cipherTextArea = document.getElementById('text-cipher-output');
+            
+            if (!cipherTextArea) {
+                alert('先にテキストを暗号化してください');
+                return;
+            }
+            
+            const cipherText = cipherTextArea.value;
+            if (!cipherText) {
+                alert('先にテキストを暗号化してください');
+                return;
+            }
+            
+            // テキスト暗号化セクションのn, eを取得
+            let useN = document.getElementById('text-encrypt-n').value;
+            let useE = document.getElementById('text-encrypt-e').value;
+            
+            if (!useN) useN = n.toString();
+            if (!useE) useE = e.toString();
+            
+            const textCipherData = JSON.stringify({
+                type: 'text_cipher',
+                cipher: cipherText,
+                n: useN,
+                e: useE
+            });
+            
+            // QRコードのサイズを動的に調整
+            const dataLength = textCipherData.length;
+            let qrSize = 256;
+            
+            if (dataLength > 500) qrSize = 384;
+            if (dataLength > 1000) qrSize = 512;
+            if (dataLength > 2000) {
+                alert('警告: データが大きすぎます。QRコードが読み取りにくくなる可能性があります。');
+                qrSize = 640;
+            }
+            
+            generateQRCode('text-cipher-qr-container', textCipherData, `テキスト暗号文 (${dataLength}文字)`, qrSize);
+        }
+
+        // QRコードスキャナーのインスタンス
+        let html5QrcodeScanner = null;
+
+        // QRコードスキャンを開始
+        function startQRScan() {
+            const readerDiv = document.getElementById('qr-reader');
+            readerDiv.style.display = 'block';
+            
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear();
+            }
+            
+            html5QrcodeScanner = new Html5Qrcode("qr-reader");
+            
+            html5QrcodeScanner.start(
+                { facingMode: "environment" }, // リアカメラを使用
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 }
+                },
+                onScanSuccess,
+                onScanFailure
+            ).catch(err => {
+                console.error('カメラ起動エラー:', err);
+                document.getElementById('qr-scan-result').innerHTML = 
+                    '<div class="result error">カメラにアクセスできませんでした。ブラウザの設定を確認してください。</div>';
+            });
+        }
+
+        // QRコードスキャンを停止
+        function stopQRScan() {
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => {
+                    document.getElementById('qr-reader').style.display = 'none';
+                }).catch(err => {
+                    console.error('スキャン停止エラー:', err);
+                });
+            }
+        }
+
+        // QRコード読み取り成功時
+        function onScanSuccess(decodedText, decodedResult) {
+            stopQRScan();
+            
+            try {
+                const data = JSON.parse(decodedText);
+                
+                let result = '<div class="result">';
+                result += '<strong>QRコードを読み取りました！</strong><br><br>';
+                
+                if (data.type === 'public_key') {
+                    result += '<strong>公開鍵</strong><br>';
+                    result += `n = ${data.n}<br>`;
+                    result += `e = ${data.e}<br><br>`;
+                    result += '暗号化セクションに自動入力されました。';
+                    
+                    document.getElementById('encrypt-n').value = data.n;
+                    document.getElementById('encrypt-e').value = data.e;
+                    
+                    // テキスト暗号化セクションにも入力
+                    document.getElementById('text-encrypt-n').value = data.n;
+                    document.getElementById('text-encrypt-e').value = data.e;
+                    
+                } else if (data.type === 'private_key') {
+                    result += '<strong>秘密鍵</strong><br>';
+                    result += `n = ${data.n}<br>`;
+                    result += `d = ${data.d}<br><br>`;
+                    result += '復号化セクションに自動入力されました。';
+                    
+                    document.getElementById('decrypt-n').value = data.n;
+                    document.getElementById('decrypt-d').value = data.d;
+                    
+                    // テキスト復号化セクションにも入力
+                    document.getElementById('text-decrypt-n').value = data.n;
+                    document.getElementById('text-decrypt-d').value = data.d;
+                    
+                } else if (data.type === 'cipher') {
+                    result += '<strong>暗号文</strong><br>';
+                    result += `C = ${data.c}<br><br>`;
+                    result += '復号化セクションに自動入力されました。';
+                    
+                    document.getElementById('decrypt-c').value = data.c;
+                    document.getElementById('decrypt-n').value = data.n;
+                    
+                } else if (data.type === 'text_cipher') {
+                    result += '<strong>テキスト暗号文</strong><br><br>';
+                    result += 'テキスト復号化セクションに自動入力されました。';
+                    
+                    document.getElementById('text-ciphertext').value = data.cipher;
+                    
+                } else {
+                    result += '不明なデータ形式です。';
+                }
+                
+                result += '</div>';
+                document.getElementById('qr-scan-result').innerHTML = result;
+                
+            } catch (e) {
+                document.getElementById('qr-scan-result').innerHTML = 
+                    '<div class="result error">QRコードのデータを解析できませんでした。</div>';
+            }
+        }
+
+        // QRコード読み取り失敗時（エラーは無視）
+        function onScanFailure(error) {
+            // スキャン中は常にエラーが出るので無視
+        }
+
+        // 暗号化
+        function encryptMessage() {
+            const M = BigInt(document.getElementById('encrypt-m').value);
+            const useE = BigInt(document.getElementById('encrypt-e').value);
+            const useN = BigInt(document.getElementById('encrypt-n').value);
+
+            if (!useE || !useN) {
+                showError('encrypt-result', 'エラー: 先に鍵を生成してください。');
+                return;
+            }
+
+            if (M >= useN) {
+                showError('encrypt-result', `エラー: メッセージ M = ${M} は n = ${useN} より小さい必要があります。`);
+                return;
+            }
+
+            if (M < 0n) {
+                showError('encrypt-result', 'エラー: メッセージは 0 以上である必要があります。');
+                return;
+            }
+
+            // 暗号化: C = M^e mod n
+            const C = modPow(M, useE, useN);
+            const bigC = BigInt(C); // modPowの結果がNumberの場合に備えてBigIntに変換
+
+            let result = `<div class="result">`;
+            result += `<strong>暗号化の計算:</strong><br><br>`;
+            result += `C = M<sup>e</sup> mod n<br>`;
+            result += `C = ${M}<sup>${useE}</sup> mod ${useN}<br><br>`;
+            
+            // 繰り返し二乗法の過程を表示
+            result += `<strong>繰り返し二乗法で計算:</strong><br>`;
+            result += getModPowSteps(M, useE, useN);
+            result += `<br><strong>暗号文 C = ${bigC}</strong>`;
+            result += `</div>`;
+
+            document.getElementById('encrypt-result').innerHTML = result;
+
+            // 復号化フィールドに自動入力
+            document.getElementById('decrypt-c').value = bigC.toString();
+            
+            // 復号化に必要なd, nも自動入力（まだ入ってない場合）
+            if (!document.getElementById('decrypt-d').value && d !== 0n) {
+                document.getElementById('decrypt-d').value = d.toString();
+            }
+            if (!document.getElementById('decrypt-n').value && n !== 0n) {
+                document.getElementById('decrypt-n').value = n.toString();
+            }
+        }
+
+        // 復号化
+        function decryptMessage() {
+            const C = BigInt(document.getElementById('decrypt-c').value);
+            const useD = BigInt(document.getElementById('decrypt-d').value);
+            const useN = BigInt(document.getElementById('decrypt-n').value);
+
+            console.log('復号化開始');
+            console.log('C =', C);
+            console.log('d =', useD);
+            console.log('n =', useN);
+
+            if (!useD || !useN) {
+                showError('decrypt-result', 'エラー: 先に鍵を生成してください。');
+                return;
+            }
+
+            if (C < 0n) {
+                showError('decrypt-result', 'エラー: 有効な暗号文を入力してください。');
+                return;
+            }
+
+            // 復号化: M = C^d mod n
+            const M = modPow(C, useD, useN);
+
+            console.log('復号化結果 M =', M);
+
+            let result = `<div class="result">`;
+            result += `<strong>復号化の計算:</strong><br><br>`;
+            result += `M = C<sup>d</sup> mod n<br>`;
+            result += `M = ${C}<sup>${useD}</sup> mod ${useN}<br><br>`;
+            
+            // 繰り返し二乗法の過程を表示
+            result += `<strong>繰り返し二乗法で計算:</strong><br>`;
+            result += getModPowSteps(C, useD, useN);
+            result += `<br><strong>復号化されたメッセージ M = ${M}</strong>`;
+            result += `</div>`;
+
+            document.getElementById('decrypt-result').innerHTML = result;
+        }
+
+        // 最大公約数（ユークリッドの互除法）
+        function gcd(a, b) {
+            let bigA = BigInt(a);
+            let bigB = BigInt(b);
+            while (bigB !== 0n) {
+                let t = bigB;
+                bigB = bigA % bigB;
+                bigA = t;
+            }
+            return bigA;
+        }
+
+        // 拡張ユークリッド互除法（詳細版）
+        function extendedGCDDetailed(a, b) {
+            const steps = [];
+            const original_a = a, original_b = b;
+            
+            // 前進過程
+            const quotients = [];
+            while (b !== 0) {
+                const quotient = Math.floor(a / b);
+                const remainder = a % b;
+                quotients.push(quotient);
+                steps.push(`${a} = ${b} × ${quotient} + ${remainder}`);
+                a = b;
+                b = remainder;
+            }
+            
+            // 後退過程
+            steps.push('<br>後退代入:');
+            let x = 0, y = 1;
+            for (let i = quotients.length - 1; i >= 0; i--) {
+                const temp = x;
+                x = y;
+                y = temp - quotients[i] * y;
+            }
+            
+            return { gcd: a, x: y, y: x, steps: steps };
+        }
+
+        // 拡張ユークリッド互除法
+        function extendedGCD(a, b) {
+            if (b === 0) {
+                return { gcd: a, x: 1, y: 0 };
+            }
+            
+            const result = extendedGCD(b, a % b);
+            const x = result.y;
+            const y = result.x - Math.floor(a / b) * result.y;
+            
+            return { gcd: result.gcd, x: x, y: y };
+        }
+
+        // モジュラ逆元
+        function modInverse(e, phi) {
+            let r0 = BigInt(phi), r1 = BigInt(e);
+            let x0 = 0n, x1 = 1n;
+            
+            while (r1 !== 0n) {
+                const q = r0 / r1;
+                const r = r0 - q * r1;
+                r0 = r1;
+                r1 = r;
+                const tmp = x0 - q * x1;
+                x0 = x1;
+                x1 = tmp;
+            }
+            
+            return x0 < 0n ? x0 + BigInt(phi) : x0;
+        }
+
+        // ビット長を計算
+        function bitLength(n) {
+            if (n === 0n) return 0;
+            let bits = 0;
+            let temp = n;
+            while (temp > 0n) {
+                bits++;
+                temp >>= 1n;
+            }
+            return bits;
+        }
+
+        // 高速モジュラ累乗（モンゴメリ乗算+ウィンドウ法）
+        function modExp(base, exp, mod, k) {
+            if (!k) {
+                const bits = bitLength(mod);
+                if (bits <= 512) k = 5;
+                else if (bits <= 1024) k = 6;
+                else if (bits <= 2048) k = 7;
+                else if (bits <= 4096) k = 8;
+                else k = 9;
+            }
+            
+            const modBits = BigInt(bitLength(mod));
+            const R = 1n << modBits;
+            const mask = R - 1n;
+            let t = 0n, newT = 1n, r = R, m = mod;
+            
+            while (m !== 0n) {
+                const q = r / m;
+                [t, newT] = [newT, t - q * newT];
+                [r, m] = [m, r - q * m];
+            }
+            
+            const nPrime = (R - (t < 0n ? t + R : t)) & mask;
+            
+            const reduce = (T) => {
+                const u = ((T & mask) * nPrime) & mask;
+                const x = (T + u * mod) >> modBits;
+                return x >= mod ? x - mod : x;
+            };
+            
+            const tableSize = 1 << (k - 1);
+            const table = new Array(tableSize);
+            const baseBar = (base << modBits) % mod;
+            const baseBar2 = reduce(baseBar * baseBar);
+            table[0] = baseBar;
+            
+            let i = 1;
+            for (; i + 3 < tableSize; i += 4) {
+                table[i] = reduce(table[i - 1] * baseBar2);
+                table[i + 1] = reduce(table[i] * baseBar2);
+                table[i + 2] = reduce(table[i + 1] * baseBar2);
+                table[i + 3] = reduce(table[i + 2] * baseBar2);
+            }
+            for (; i < tableSize; i++) {
+                table[i] = reduce(table[i - 1] * baseBar2);
+            }
+            
+            let res = (1n << modBits) % mod;
+            const expBits = bitLength(exp);
+            let bitPos = expBits - 1;
+            
+            while (bitPos >= 0) {
+                const bit = (exp >> BigInt(bitPos)) & 1n;
+                if (!bit) {
+                    res = reduce(res * res);
+                    bitPos--;
+                } else {
+                    let winSize = 1;
+                    let winVal = 1n;
+                    const maxWinSize = Math.min(k, bitPos + 1);
+                    
+                    for (let j = 1; j < maxWinSize; j++) {
+                        winVal = (winVal << 1n) | ((exp >> BigInt(bitPos - j)) & 1n);
+                        winSize = j + 1;
+                    }
+                    
+                    let zeros = 0;
+                    while (winSize > 1 && !(winVal & 1n)) {
+                        winVal >>= 1n;
+                        winSize--;
+                        zeros++;
+                    }
+                    
+                    for (let s = 0; s < winSize; s++) {
+                        res = reduce(res * res);
+                    }
+                    
+                    const idx = Number(winVal >> 1n);
+                    res = reduce(res * table[idx]);
+                    bitPos -= winSize;
+                }
+            }
+            
+            return reduce(res);
+        }
+
+        // モジュラ累乗（繰り返し二乗法）- BigIntを使用
+        function modPow(base, exp, mod) {
+            // 大きな数の場合は高速なmodExpを使用
+            if (bitLength(BigInt(mod)) > 100) {
+                return modExp(BigInt(base), BigInt(exp), BigInt(mod));
+            }
+            
+            // 小さな数は従来の方法
+            if (mod === 1 || mod === 1n) return 0n;
+            
+            // BigIntに変換
+            let result = 1n;
+            let bigBase = BigInt(base) % BigInt(mod);
+            let bigExp = BigInt(exp);
+            let bigMod = BigInt(mod);
+            
+            while (bigExp > 0n) {
+                if (bigExp % 2n === 1n) {
+                    result = (result * bigBase) % bigMod;
+                }
+                bigExp = bigExp / 2n;
+                bigBase = (bigBase * bigBase) % bigMod;
+            }
+            
+            // BigIntのまま返す
+            return result;
+        }
+
+        // モジュラ累乗の計算過程を取得 - BigIntを使用
+        function getModPowSteps(base, exp, mod) {
+            let steps = '';
+            let result = 1n;
+            let bigBase = BigInt(base);
+            let bigExp = BigInt(exp);
+            let bigMod = BigInt(mod);
+            let currentBase = bigBase % bigMod;
+            let currentExp = bigExp;
+            let stepNum = 0;
+            
+            steps += `初期値: result = 1, base = ${bigBase} mod ${bigMod} = ${currentBase}, exp = ${bigExp}<br><br>`;
+            
+            while (currentExp > 0n) {
+                stepNum++;
+                const isOdd = currentExp % 2n === 1n;
+                
+                if (isOdd) {
+                    const oldResult = result;
+                    result = (result * currentBase) % bigMod;
+                    steps += `ステップ ${stepNum}: exp が奇数なので<br>`;
+                    steps += `result = (${oldResult} × ${currentBase}) mod ${bigMod} = ${result}<br>`;
+                }
+                
+                const oldBase = currentBase;
+                currentExp = currentExp / 2n;
+                currentBase = (currentBase * currentBase) % bigMod;
+                
+                if (currentExp > 0n) {
+                    steps += `exp = ${currentExp}, base = (${oldBase}<sup>2</sup>) mod ${bigMod} = ${currentBase}<br><br>`;
+                }
+            }
+            
+            return steps;
+        }
+
+        // エラー表示
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="result error">${message}</div>`;
+        }
+
+        // テキスト暗号化
+        function encryptText() {
+            // テキスト暗号化セクションのn, eを取得（空欄ならグローバル変数から）
+            let useE = document.getElementById('text-encrypt-e').value;
+            let useN = document.getElementById('text-encrypt-n').value;
+            
+            if (!useE) {
+                if (e === 0n) {
+                    showError('text-encrypt-result', 'エラー: 先に鍵を生成するか、e を入力してください。');
+                    return;
+                }
+                useE = e.toString();
+                document.getElementById('text-encrypt-e').value = useE;
+            }
+            
+            if (!useN) {
+                if (n === 0n) {
+                    showError('text-encrypt-result', 'エラー: 先に鍵を生成するか、n を入力してください。');
+                    return;
+                }
+                useN = n.toString();
+                document.getElementById('text-encrypt-n').value = useN;
+            }
+            
+            const bigE = BigInt(useE);
+            const bigN = BigInt(useN);
+
+            const text = document.getElementById('text-message').value;
+            if (!text) {
+                showError('text-encrypt-result', 'エラー: テキストを入力してください。');
+                return;
+            }
+
+            const ciphertexts = [];
+            const charCodes = [];
+
+            // 各文字を暗号化
+            for (let i = 0; i < text.length; i++) {
+                const charCode = text.charCodeAt(i);
+                charCodes.push(charCode);
+                
+                if (BigInt(charCode) >= bigN) {
+                    showError('text-encrypt-result', 
+                        `エラー: 文字 "${text[i]}" (文字コード: ${charCode}) は n = ${bigN} より大きいため暗号化できません。<br>より大きな素数を選んでください。`);
+                    return;
+                }
+                
+                const cipher = modPow(charCode, bigE, bigN);
+                ciphertexts.push(cipher.toString()); // BigIntを文字列に変換
+            }
+
+            const cipherString = ciphertexts.join(',');
+
+            let result = `<div class="result">`;
+            result += `<strong>テキスト暗号化成功！</strong><br><br>`;
+            result += `<strong>元のテキスト:</strong> "${text}"<br><br>`;
+            
+            // 文字コード変換表
+            result += `<strong>文字コード変換:</strong><br>`;
+            result += `<div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin: 10px 0; max-height: 150px; overflow-y: auto;">`;
+            for (let i = 0; i < text.length; i++) {
+                result += `"${text[i]}" → ${charCodes[i]}<br>`;
+            }
+            result += `</div>`;
+            
+            // 暗号化計算
+            result += `<strong>各文字の暗号化:</strong><br>`;
+            result += `<div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin: 10px 0; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.85em;">`;
+            for (let i = 0; i < text.length; i++) {
+                result += `"${text[i]}" (${charCodes[i]}): ${charCodes[i]}<sup>${bigE}</sup> mod ${bigN} = ${ciphertexts[i]}<br>`;
+            }
+            result += `</div>`;
+            
+            result += `<strong>暗号文（カンマ区切り）:</strong><br>`;
+            result += `<textarea readonly style="width:100%; height:100px; padding:10px; font-family: monospace; margin-top: 10px;">${cipherString}</textarea>`;
+            
+            // テキスト暗号文出力用の隠しフィールド
+            result += `<textarea id="text-cipher-output" style="display:none;">${cipherString}</textarea>`;
+            result += `</div>`;
+
+            document.getElementById('text-encrypt-result').innerHTML = result;
+
+            // 復号化フィールドに自動入力
+            document.getElementById('text-ciphertext').value = cipherString;
+        }
+
+        // テキスト復号化
+        function decryptText() {
+            // テキスト復号化セクションのd, nを取得（空欄ならグローバル変数から）
+            let useD = document.getElementById('text-decrypt-d').value;
+            let useN = document.getElementById('text-decrypt-n').value;
+            
+            if (!useD) {
+                if (d === 0n) {
+                    showError('text-decrypt-result', 'エラー: 先に鍵を生成するか、d を入力してください。');
+                    return;
+                }
+                useD = d.toString();
+                document.getElementById('text-decrypt-d').value = useD;
+            }
+            
+            if (!useN) {
+                if (n === 0n) {
+                    showError('text-decrypt-result', 'エラー: 先に鍵を生成するか、n を入力してください。');
+                    return;
+                }
+                useN = n.toString();
+                document.getElementById('text-decrypt-n').value = useN;
+            }
+            
+            const bigD = BigInt(useD);
+            const bigN = BigInt(useN);
+
+            const cipherString = document.getElementById('text-ciphertext').value.trim();
+            if (!cipherString) {
+                showError('text-decrypt-result', 'エラー: 暗号文を入力してください。');
+                return;
+            }
+
+            // カンマ区切りの暗号文を解析
+            const ciphertexts = cipherString.split(',').map(s => BigInt(s.trim()));
+            
+            let decryptedText = '';
+            const charCodes = [];
+
+            // 各暗号文を復号化
+            for (let cipher of ciphertexts) {
+                const charCode = modPow(cipher, bigD, bigN);
+                charCodes.push(charCode);
+                decryptedText += String.fromCharCode(Number(charCode)); // BigIntをNumberに変換
+            }
+
+            let result = `<div class="result">`;
+            result += `<strong>テキスト復号化成功！</strong><br><br>`;
+            
+            // 復号化計算
+            result += `<strong>各暗号文の復号化:</strong><br>`;
+            result += `<div style="background: #f9f9f9; padding: 10px; border-radius: 4px; margin: 10px 0; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.85em;">`;
+            for (let i = 0; i < ciphertexts.length; i++) {
+                const char = String.fromCharCode(Number(charCodes[i])); // BigIntをNumberに変換
+                result += `${ciphertexts[i]}<sup>${bigD}</sup> mod ${bigN} = ${charCodes[i]} → "${char}"<br>`;
+            }
+            result += `</div>`;
+            
+            result += `<strong>復号化されたテキスト:</strong><br>`;
+            result += `<div style="font-size:1.3em; padding:15px; background:#e8f5e9; border:2px solid #4caf50; border-radius:6px; margin-top:10px; word-break: break-all;">"${decryptedText}"</div>`;
+            result += `</div>`;
+
+            document.getElementById('text-decrypt-result').innerHTML = result;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{
+  "name": "practice",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/Kazuhiro-Tokumoto/practice#readme",
+  "bugs": {
+    "url": "https://github.com/Kazuhiro-Tokumoto/practice/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kazuhiro-Tokumoto/practice.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "undici-types": "^7.16.0",
+    "vite": "^7.3.0"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.0.1",
+    "@supabase/supabase-js": "^2.89.0",
+    "prettier": "^3.8.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "ws": "^8.18.3"
+  }
+}
