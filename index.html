@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        /* タッチ操作での拡大を防止 */
+        body {
+            touch-action: pan-y pan-x;
+            -ms-touch-action: pan-y pan-x;
+        }
+        /* ダブルタップズームを防止 */
+        * {
+            touch-action: manipulation;
+        }
+        /* テキスト選択時の拡大を防止 */
+        input, textarea, select {
+            touch-action: manipulation;
+        }
+    </style>
+</head>
+<body>
+    <script type="module" src="./rsa.js"></script>
+</body>
+</html>

@@ -2,24 +2,1671 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA暗号 完全マスターガイド - 小学3年生でもわかる超詳しい解説</title>
     <style>
-        /* タッチ操作での拡大を防止 */
         body {
-            touch-action: pan-y pan-x;
-            -ms-touch-action: pan-y pan-x;
+            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            line-height: 2.2;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 19px;
         }
-        /* ダブルタップズームを防止 */
-        * {
-            touch-action: manipulation;
+        
+        h1 {
+            color: #ff6b6b;
+            border-bottom: 5px solid #ff6b6b;
+            padding-bottom: 20px;
+            margin-top: 50px;
+            font-size: 36px;
+            text-align: center;
         }
-        /* テキスト選択時の拡大を防止 */
-        input, textarea, select {
-            touch-action: manipulation;
+        
+        h2 {
+            color: #4a7ba7;
+            border-left: 8px solid #7ba4c8;
+            padding-left: 25px;
+            margin-top: 60px;
+            font-size: 30px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        h3 {
+            color: #5a8fb0;
+            margin-top: 40px;
+            font-size: 26px;
+            border-bottom: 3px solid #7ba4c8;
+            padding-bottom: 10px;
+        }
+        
+        h4 {
+            color: #6a9fc0;
+            margin-top: 30px;
+            font-size: 22px;
+            background-color: #f0f7fb;
+            padding: 12px;
+            border-radius: 6px;
+        }
+        
+        h5 {
+            color: #7aafcf;
+            margin-top: 20px;
+            font-size: 20px;
+        }
+        
+        .toc {
+            background-color: white;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 12px;
+            border: 4px solid #7ba4c8;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .toc h2 {
+            margin-top: 0;
+            background-color: transparent;
+            padding: 0;
+            padding-left: 25px;
+        }
+        
+        .toc ol {
+            font-size: 18px;
+        }
+        
+        .toc li {
+            margin: 10px 0;
+        }
+        
+        .section {
+            background-color: white;
+            padding: 35px;
+            margin: 30px 0;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .mega-important {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+            padding: 30px;
+            border: 5px solid #ff6b6b;
+            margin: 35px 0;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 21px;
+        }
+        
+        .super-important {
+            background-color: #fff8e1;
+            padding: 25px;
+            border-left: 6px solid #ffa726;
+            margin: 30px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        
+        .important {
+            background-color: #e8f5e9;
+            padding: 20px;
+            border-left: 5px solid #66bb6a;
+            margin: 25px 0;
+            border-radius: 6px;
+        }
+        
+        .example {
+            background-color: #f0f7fb;
+            padding: 30px;
+            border: 3px solid #7ba4c8;
+            margin: 30px 0;
+            border-radius: 10px;
+            font-size: 18px;
+        }
+        
+        .why-box {
+            background: linear-gradient(135deg, #e8f4f8 0%, #d4e9f7 100%);
+            padding: 25px;
+            border-left: 8px solid #2196f3;
+            margin: 25px 0;
+            border-radius: 8px;
+            font-size: 19px;
+        }
+        
+        .why-box::before {
+            content: "🤔 なぜ？";
+            display: block;
+            font-size: 24px;
+            font-weight: bold;
+            color: #2196f3;
+            margin-bottom: 15px;
+        }
+        
+        .answer-box {
+            background: linear-gradient(135deg, #f0f7fb 0%, #e3f2fd 100%);
+            padding: 25px;
+            border-left: 8px solid #1976d2;
+            margin: 25px 10px 25px 40px;
+            border-radius: 8px;
+            font-size: 18px;
+        }
+        
+        .answer-box::before {
+            content: "💡 答え：";
+            display: block;
+            font-size: 22px;
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+        
+        .thinking-process {
+            background: linear-gradient(135deg, #fff9e6 0%, #ffecb3 100%);
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 10px;
+            border: 3px solid #ffa726;
+        }
+        
+        .thinking-process::before {
+            content: "💭 考え方：";
+            display: block;
+            font-size: 22px;
+            font-weight: bold;
+            color: #f57c00;
+            margin-bottom: 15px;
+        }
+        
+        .step-by-step {
+            background-color: #fafafa;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 10px;
+            border: 3px solid #9e9e9e;
+        }
+        
+        .steps {
+            background-color: #f5f5f5;
+            padding: 25px;
+            margin: 20px 0;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+        }
+        
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            padding-left: 40px;
+            position: relative;
+            background-color: white;
+            border-radius: 4px;
+            border-left: 4px solid #7ba4c8;
+        }
+        
+        .step::before {
+            content: "▶";
+            position: absolute;
+            left: 15px;
+            color: #7ba4c8;
+            font-size: 20px;
+        }
+        
+        .micro-step {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            border-left: 6px solid #7ba4c8;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        
+        .micro-step-number {
+            display: inline-block;
+            background-color: #7ba4c8;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .calculation {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 6px solid #4caf50;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+        }
+        
+        .calculation-step {
+            margin: 18px 0;
+            padding: 15px;
+            background-color: white;
+            border-radius: 6px;
+            font-size: 19px;
+        }
+        
+        .highlight-yellow {
+            background-color: #ffeb3b;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .highlight-red {
+            background-color: #ffcdd2;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #c62828;
+        }
+        
+        .highlight-blue {
+            background-color: #bbdefb;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #1565c0;
+        }
+        
+        .highlight-green {
+            background-color: #c8e6c9;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        
+        .highlight {
+            background-color: #ffeb3b;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        .big-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c5f8d;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f0f7fb;
+            border-radius: 8px;
+        }
+        
+        .huge-number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ff6b6b;
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+            border-radius: 10px;
+            border: 4px solid #ff6b6b;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background-color: white;
+            font-size: 17px;
+        }
+        
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border: 2px solid #e0e0e0;
+        }
+        
+        th {
+            background-color: #e8f1f7;
+            color: #2c5f8d;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        
+        .visual-flow {
+            background-color: white;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 10px;
+            border: 3px dashed #7ba4c8;
+        }
+        
+        .visual-table {
+            background-color: white;
+            border: 2px solid #7ba4c8;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .arrow {
+            font-size: 30px;
+            text-align: center;
+            color: #7ba4c8;
+            margin: 15px 0;
+        }
+        
+        .note {
+            font-size: 17px;
+            color: #666;
+            font-style: italic;
+            margin: 15px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            border-left: 4px solid #9e9e9e;
+        }
+        
+        .box {
+            border: 3px solid #7ba4c8;
+            padding: 25px;
+            margin: 25px 0;
+            border-radius: 8px;
+            background-color: #f8fcff;
+        }
+        
+        .practice {
+            background-color: #f3e5f5;
+            padding: 30px;
+            margin: 30px 0;
+            border-radius: 10px;
+            border: 3px solid #9c27b0;
+        }
+        
+        .practice::before {
+            content: "✏️ 練習問題";
+            display: block;
+            font-size: 24px;
+            font-weight: bold;
+            color: #9c27b0;
+            margin-bottom: 20px;
+        }
+        
+        ul, ol {
+            margin: 20px 0;
+            padding-left: 45px;
+        }
+        
+        li {
+            margin: 15px 0;
+        }
+        
+        details {
+            margin: 20px 0;
+        }
+        
+        summary {
+            cursor: pointer;
+            color: #2196f3;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 6px;
+        }
+        
+        summary:hover {
+            background-color: #bbdefb;
+        }
+        
+        .question {
+            background-color: #e8f4f8;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 6px;
+            border: 2px solid #b8d4e0;
+        }
+        
+        .answer {
+            background-color: #f0f7fb;
+            padding: 20px;
+            margin: 15px 0 20px 25px;
+            border-radius: 6px;
+            border-left: 4px solid #7ba4c8;
         }
     </style>
 </head>
 <body>
-    <script type="module" src="./rsa.js"></script>
+
+<h1>🔐 RSA暗号 完全マスターガイド</h1>
+<h1 style="margin-top: 10px; font-size: 28px; color: #2c5f8d;">小学3年生でもわかる超詳しい解説</h1>
+
+<div class="mega-important">
+    <p style="font-size: 24px; text-align: center;">このガイドでは、RSA暗号を</p>
+    <p style="font-size: 28px; text-align: center; color: #ff6b6b;">基礎から完璧に</p>
+    <p style="font-size: 24px; text-align: center;">理解できるように説明します！</p>
+    <p style="font-size: 20px; text-align: center; margin-top: 20px;">特に、一番難しい<span class="highlight-yellow">「dの求め方」</span>は、</p>
+    <p style="font-size: 20px; text-align: center;">なぜそうなるのかまで含めて超詳しく解説！</p>
+</div>
+
+<div class="toc">
+    <h2>📚 目次</h2>
+    <ol style="font-size: 18px;">
+        <li><strong>第1章：</strong> 余りってなに？（割り算の復習）</li>
+        <li><strong>第2章：</strong> 約数と最大公約数</li>
+        <li><strong>第3章：</strong> ユークリッドの互除法</li>
+        <li><strong>第4章：</strong> 拡張ユークリッドの互除法（超重要！）
+            <ul>
+                <li>4.1 何が「拡張」なの？</li>
+                <li>4.2 基本例題（7と5）</li>
+                <li>4.3 なぜ逆算するの？</li>
+                <li>4.4 もっと大きい数の例（17と20）</li>
+                <li>4.5 表を使った方法</li>
+            </ul>
+        </li>
+        <li><strong>第5章：</strong> 素数とは？</li>
+        <li><strong>第6章：</strong> オイラーのφ（ファイ）関数</li>
+        <li><strong>第7章：</strong> フェルマーの小定理とオイラーの定理</li>
+        <li><strong>第8章：</strong> RSA暗号の仕組み</li>
+        <li><strong>第9章：</strong> dの求め方（実践編・完全版）
+            <ul>
+                <li>9.1 modを完全理解</li>
+                <li>9.2 問題の変形</li>
+                <li>9.3 簡単な例（p=3, q=11, e=7）</li>
+                <li>9.4 中級の例（p=5, q=11, e=13）</li>
+                <li>9.5 上級の例（p=7, q=13, e=5）</li>
+            </ul>
+        </li>
+        <li><strong>第10章：</strong> 暗号化と復号化</li>
+        <li><strong>第11章：</strong> なぜRSAは安全なの？</li>
+        <li><strong>第12章：</strong> 練習問題</li>
+    </ol>
+</div>
+
+<h2>第1章：余りってなに？</h2>
+
+<div class="section">
+    <h3>1.1 割り算の余りを思い出そう</h3>
+    
+    <p>まず、小学校で習った<strong>「割り算の余り」</strong>を思い出してみましょう。</p>
+    
+    <div class="example">
+        <p><strong>例題1：</strong> 17個のアメを5人で同じ数ずつ分けると、1人何個もらえて、何個余るでしょうか？</p>
+        
+        <div class="calculation">
+            <div class="calculation-step">17 ÷ 5 = 3 余り 2</div>
+        </div>
+        
+        <p><strong>答え：</strong> 1人3個もらえて、<span class="highlight">2個余ります</span>。</p>
+        
+        <p>これを別の書き方で表すと：</p>
+        <div class="calculation">
+            <div class="calculation-step">17 = 5 × 3 + 2</div>
+        </div>
+        
+        <p>つまり、「5を3回足して、さらに2を足すと17になる」という意味です。</p>
+    </div>
+    
+    <h3>1.2 もっと練習してみよう</h3>
+    
+    <div class="example">
+        <p><strong>例題2：</strong> 23 ÷ 7 の余りは？</p>
+        
+        <div class="steps">
+            <div class="step">
+                <p>まず、7 × 3 = 21（これは23より小さい）</p>
+            </div>
+            <div class="step">
+                <p>次に、7 × 4 = 28（これは23より大きい）</p>
+            </div>
+            <div class="step">
+                <p>だから、7は3回まで入る</p>
+            </div>
+            <div class="step">
+                <p>23 - 21 = 2</p>
+            </div>
+        </div>
+        
+        <p class="big-number">答え：23 ÷ 7 = 3 余り 2</p>
+    </div>
+    
+    <h3>1.3 余りの大切なルール</h3>
+    
+    <div class="important">
+        <p><strong>ルール1：</strong> 余りは必ず、割る数より小さい</p>
+        <p>例：5で割ったとき、余りは 0, 1, 2, 3, 4 のどれか</p>
+    </div>
+    
+    <div class="important">
+        <p><strong>ルール2：</strong> 余りが0のとき、「割り切れる」という</p>
+        <p>例：15 ÷ 5 = 3 余り 0 → 15は5で割り切れる</p>
+    </div>
+    
+    <h3>1.4 mod（モッド）記号</h3>
+    
+    <div class="super-important">
+        <p><strong>「a ≡ b (mod n)」の意味：</strong></p>
+        <p>「aをnで割った余り」と「bをnで割った余り」が<strong>同じ</strong></p>
+    </div>
+    
+    <div class="example">
+        <p><strong>例1：</strong> 17 ≡ 2 (mod 5) は正しい？</p>
+        
+        <div class="step-by-step">
+            <div class="micro-step">
+                <span class="micro-step-number">ステップ1</span>
+                <p>17を5で割る：17 ÷ 5 = 3 余り <span class="highlight-yellow">2</span></p>
+            </div>
+            
+            <div class="micro-step">
+                <span class="micro-step-number">ステップ2</span>
+                <p>2を5で割る：2 ÷ 5 = 0 余り <span class="highlight-yellow">2</span></p>
+            </div>
+            
+            <div class="micro-step">
+                <span class="micro-step-number">結論</span>
+                <p>余りが両方とも2だから、<span class="highlight-green">正しい！</span></p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="important">
+        <p>「a ≡ b (mod n)」は、次のようにも書けます：</p>
+        <p style="font-size: 20px; text-align: center; margin: 20px 0;">
+            a = n × k + b （kは何か整数）
+        </p>
+    </div>
+</div>
+
+<h2>第2章：約数と最大公約数</h2>
+
+<div class="section">
+    <h3>2.1 約数ってなに？</h3>
+    
+    <p><strong>約数</strong>とは、ある数を<span class="highlight">割り切れる</span>数のことです。</p>
+    
+    <div class="example">
+        <p><strong>例：</strong> 12の約数を全部見つけてみましょう。</p>
+        
+        <table>
+            <tr>
+                <th>割る数</th>
+                <th>計算</th>
+                <th>結果</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>12 ÷ 1 = 12</td>
+                <td>✓ 割り切れる</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>12 ÷ 2 = 6</td>
+                <td>✓ 割り切れる</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>12 ÷ 3 = 4</td>
+                <td>✓ 割り切れる</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>12 ÷ 4 = 3</td>
+                <td>✓ 割り切れる</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>12 ÷ 5 = 2.4</td>
+                <td>✗ 割り切れない</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>12 ÷ 6 = 2</td>
+                <td>✓ 割り切れる</td>
+            </tr>
+            <tr>
+                <td>12</td>
+                <td>12 ÷ 12 = 1</td>
+                <td>✓ 割り切れる</td>
+            </tr>
+        </table>
+        
+        <p class="big-number">12の約数：1, 2, 3, 4, 6, 12</p>
+    </div>
+    
+    <h3>2.2 最大公約数ってなに？</h3>
+    
+    <p>2つの数の約数を比べて、<strong>両方に共通する約数の中で一番大きいもの</strong>を<span class="highlight">最大公約数</span>といいます。</p>
+    
+    <div class="example">
+        <p><strong>例：</strong> 12と18の最大公約数を求めましょう。</p>
+        
+        <div class="visual-table">
+            <h4>ステップ1：それぞれの約数を書き出す</h4>
+            <table>
+                <tr>
+                    <th>12の約数</th>
+                    <td>1, 2, 3, 4, 6, 12</td>
+                </tr>
+                <tr>
+                    <th>18の約数</th>
+                    <td>1, 2, 3, 6, 9, 18</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="visual-table">
+            <h4>ステップ2：共通する約数を探す</h4>
+            <p>両方にある約数：<span class="highlight">1, 2, 3, 6</span></p>
+        </div>
+        
+        <div class="visual-table">
+            <h4>ステップ3：一番大きいものを選ぶ</h4>
+            <p class="big-number">最大公約数 = 6</p>
+        </div>
+    </div>
+    
+    <h3>2.3 互いに素ってなに？</h3>
+    
+    <div class="super-important">
+        <p><strong>「互いに素」とは：</strong></p>
+        <p>2つの数の最大公約数が<span class="highlight">1</span>のとき、その2つの数は<strong>互いに素</strong>といいます。</p>
+    </div>
+    
+    <div class="example">
+        <p><strong>例1：</strong> 7と12は互いに素？</p>
+        
+        <table>
+            <tr>
+                <th>7の約数</th>
+                <td>1, 7</td>
+            </tr>
+            <tr>
+                <th>12の約数</th>
+                <td>1, 2, 3, 4, 6, 12</td>
+            </tr>
+            <tr>
+                <th>共通の約数</th>
+                <td><span class="highlight">1だけ</span></td>
+            </tr>
+        </table>
+        
+        <p class="big-number">✓ 7と12は互いに素です！</p>
+    </div>
+</div>
+
+<h2>第3章：ユークリッドの互除法</h2>
+
+<div class="section">
+    <p>約数を全部書き出すのは、数が大きくなると大変です。もっと<strong>簡単に最大公約数を求める方法</strong>があります！</p>
+    
+    <h3>3.1 ユークリッドの互除法とは？</h3>
+    
+    <div class="super-important">
+        <p><strong>ユークリッドの互除法の考え方：</strong></p>
+        <p>大きい数を小さい数で割って、余りを求める。</p>
+        <p>次は、小さい数をその余りで割る。</p>
+        <p>これを<span class="highlight">余りが0になるまで</span>繰り返す。</p>
+        <p>余りが0になったとき、割った数が<strong>最大公約数</strong>です！</p>
+    </div>
+    
+    <h3>3.2 実際にやってみよう（例1）</h3>
+    
+    <div class="example">
+        <p><strong>問題：</strong> 48と18の最大公約数を求めましょう。</p>
+        
+        <div class="steps">
+            <div class="step">
+                <p><strong>ステップ1：</strong> 大きい数(48)を小さい数(18)で割る</p>
+                <div class="calculation">
+                    <div class="calculation-step">48 ÷ 18 = 2 余り 12</div>
+                    <div class="calculation-step">（確認：18 × 2 + 12 = 36 + 12 = 48 ✓）</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <p><strong>ステップ2：</strong> 今度は18を余り(12)で割る</p>
+                <div class="calculation">
+                    <div class="calculation-step">18 ÷ 12 = 1 余り 6</div>
+                    <div class="calculation-step">（確認：12 × 1 + 6 = 12 + 6 = 18 ✓）</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <p><strong>ステップ3：</strong> 今度は12を余り(6)で割る</p>
+                <div class="calculation">
+                    <div class="calculation-step">12 ÷ 6 = 2 余り 0</div>
+                    <div class="calculation-step">（確認：6 × 2 + 0 = 12 ✓）</div>
+                </div>
+                <p><span class="highlight-red">余りが0になった！</span></p>
+            </div>
+        </div>
+        
+        <p class="big-number">最大公約数 = 6</p>
+        
+        <div class="note">
+            <p><strong>まとめると：</strong></p>
+            <table style="background-color: white;">
+                <tr>
+                    <th>計算</th>
+                    <th>余り</th>
+                </tr>
+                <tr>
+                    <td>48 ÷ 18</td>
+                    <td>12</td>
+                </tr>
+                <tr>
+                    <td>18 ÷ 12</td>
+                    <td>6</td>
+                </tr>
+                <tr>
+                    <td>12 ÷ 6</td>
+                    <td><span class="highlight">0</span> ← ここで止まる！</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    
+    <div class="why-box">
+        <p>なぜこれで最大公約数が求まるの？</p>
+    </div>
+    
+    <div class="answer-box">
+        <p>簡単に言うと：</p>
+        <p>「48と18の公約数」=「18と12の公約数」=「12と6の公約数」=「6と0の公約数」</p>
+        <p>という性質があるからです。</p>
+        <p>そして、「6と0の公約数」は明らかに6です。</p>
+    </div>
+</div>
+
+<h2>第4章：拡張ユークリッドの互除法（超重要！）</h2>
+
+<div class="section">
+    <p style="font-size: 20px; color: #ff6b6b; font-weight: bold;">ここからが本番です！RSA暗号の<strong>dを求めるため</strong>の最重要テクニックです！</p>
+    
+    <h3>4.1 何が「拡張」なの？</h3>
+    
+    <div class="thinking-process">
+        <p><strong>普通のユークリッドの互除法：</strong></p>
+        <p>→ 最大公約数を求めるだけ</p>
+        
+        <p><strong>拡張ユークリッドの互除法：</strong></p>
+        <p>→ 最大公約数<strong>だけでなく</strong>、次の式を満たすxとyも求める：</p>
+        <p style="font-size: 20px; text-align: center; margin: 15px 0;">
+            <span class="highlight-yellow">a × x + b × y = 最大公約数</span>
+        </p>
+    </div>
+    
+    <div class="super-important">
+        <p>RSA暗号では、eとφ(n)は<strong>互いに素</strong>（最大公約数が1）なので：</p>
+        <p style="font-size: 20px; text-align: center; margin: 15px 0;">
+            <span class="highlight-yellow">e × d + φ(n) × y = 1</span>
+        </p>
+        <p>を満たすdとyを求めることができます！</p>
+    </div>
+    
+    <h3>4.2 超詳しい例題1（基本）</h3>
+    
+    <div class="example">
+        <p style="font-size: 22px;"><strong>問題：</strong> 7 × x + 5 × y = 1 となるxとyを求めよ</p>
+        
+        <h4>【フェーズ1】普通のユークリッドの互除法</h4>
+        
+        <div class="step-by-step">
+            <div class="micro-step">
+                <span class="micro-step-number">ステップ1-1</span>
+                <p>7を5で割る</p>
+                <div class="calculation">
+                    <div class="calculation-step">7 ÷ 5 = 1 余り 2</div>
+                    <div class="calculation-step">式：<span class="highlight-blue">7 = 5 × 1 + 2</span> ... ①</div>
+                </div>
+            </div>
+            
+            <div class="micro-step">
+                <span class="micro-step-number">ステップ1-2</span>
+                <p>5を2で割る</p>
+                <div class="calculation">
+                    <div class="calculation-step">5 ÷ 2 = 2 余り 1</div>
+                    <div class="calculation-step">式：<span class="highlight-blue">5 = 2 × 2 + 1</span> ... ②</div>
+                </div>
+            </div>
+            
+            <div class="micro-step">
+                <span class="micro-step-number">ステップ1-3</span>
+                <p>2を1で割る</p>
+                <div class="calculation">
+                    <div class="calculation-step">2 ÷ 1 = 2 余り 0</div>
+                    <div class="calculation-step">式：<span class="highlight-blue">2 = 1 × 2 + 0</span> ... ③</div>
+                </div>
+                <p><span class="highlight-red">余りが0！終了！</span></p>
+                <p>最大公約数は1（互いに素を確認）</p>
+            </div>
+        </div>
+        
+        <h4>【フェーズ2】逆算（ここが本番！）</h4>
+        
+        <div class="mega-important">
+            <p style="font-size: 20px;">これから、上で作った式を<strong>逆から使って</strong>、1を7と5だけで表します！</p>
+        </div>
+        
+        <div class="step-by-step">
+            <div class="micro-step">
+                <span class="micro-step-number">逆算ステップ1</span>
+                <p><strong>目標：</strong> 式②から「1」を取り出す</p>
+                
+                <div class="calculation">
+                    <div class="calculation-step">式②：5 = 2 × 2 + 1</div>
+                </div>
+                
+                <div class="why-box">
+                    <p>1を左側に持ってくるには？</p>
+                </div>
+                
+                <div class="answer-box">
+                    <p>両辺から「2 × 2」を引けばいい！</p>
+                    <div class="calculation">
+                        <div class="calculation-step">5 - 2 × 2 = 1</div>
+                    </div>
+                    <p>つまり：</p>
+                    <div class="calculation">
+                        <div class="calculation-step"><span class="highlight-yellow">1 = 5 - 2 × 2</span></div>
+                        <div class="calculation-step">または</div>
+                        <div class="calculation-step"><span class="highlight-yellow">1 = 5 × 1 + 2 × (-2)</span></div>
+                    </div>
+                </div>
+                
+                <p class="note">今の時点で、1を「5と2」で表せました。でも、問題は「7と5」で表したい...</p>
+            </div>
+            
+            <div class="micro-step">
+                <span class="micro-step-number">逆算ステップ2</span>
+                <p><strong>目標：</strong> 上の式から「2」を消して、代わりに「7」を入れる</p>
+                
+                <div class="calculation">
+                    <div class="calculation-step">今の式：1 = 5 × 1 + 2 × (-2)</div>
+                </div>
+                
+                <div class="why-box">
+                    <p>2を7と5で表すには？</p>
+                </div>
+                
+                <div class="answer-box">
+                    <p>式①を使います！</p>
+                    <div class="calculation">
+                        <div class="calculation-step">式①：7 = 5 × 1 + 2</div>
+                    </div>
+                    <p>これを変形すると：</p>
+                    <div class="calculation">
+                        <div class="calculation-step">2 = 7 - 5 × 1</div>
+                    </div>
+                    <p><span class="highlight-green">2を7と5で表せた！</span></p>
+                </div>
+            </div>
+            
+            <div class="micro-step">
+                <span class="micro-step-number">逆算ステップ3</span>
+                <p><strong>目標：</strong> 逆算ステップ1の式に、逆算ステップ2の結果を代入</p>
+                
+                <div class="step-by-step" style="background-color: #fff8e1;">
+                    <p><strong>代入前の式：</strong></p>
+                    <div class="calculation">
+                        <div class="calculation-step">1 = 5 × 1 + 2 × (-2)</div>
+                    </div>
+                    
+                    <p><strong>2を置き換える：</strong>（2 = 7 - 5 × 1 を使う）</p>
+                    <div class="calculation">
+                        <div class="calculation-step">1 = 5 × 1 + <span class="highlight-red">(7 - 5 × 1)</span> × (-2)</div>
+                    </div>
+                    
+                    <div class="why-box">
+                        <p>この式を展開するには？</p>
+                    </div>
+                    
+                    <div class="answer-box">
+                        <p>カッコを外して計算します：</p>
+                        <div class="calculation">
+                            <div class="calculation-step">1 = 5 × 1 + 7 × (-2) - 5 × 1 × (-2)</div>
+                            <div class="calculation-step">↓ (-2) × (-1) = +2</div>
+                            <div class="calculation-step">1 = 5 × 1 + 7 × (-2) + 5 × 2</div>
+                            <div class="calculation-step">↓ 5の部分をまとめる</div>
+                            <div class="calculation-step">1 = 5 × (1 + 2) + 7 × (-2)</div>
+                            <div class="calculation-step">1 = 5 × 3 + 7 × (-2)</div>
+                        </div>
+                        
+                        <p>順番を入れ替えると：</p>
+                        <div class="calculation">
+                            <div class="calculation-step"><span class="highlight-yellow">1 = 7 × (-2) + 5 × 3</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="huge-number">
+            答え：x = -2, y = 3
+        </div>
+        
+        <div class="important">
+            <p><strong>確認：</strong></p>
+            <div class="calculation">
+                <div class="calculation-step">7 × (-2) + 5 × 3</div>
+                <div class="calculation-step">= -14 + 15</div>
+                <div class="calculation-step">= 1 ✓</div>
+            </div>
+        </div>
+    </div>
+    
+    <h3>4.3 なぜ逆算するの？</h3>
+    
+    <div class="thinking-process">
+        <p><strong>逆算の意味：</strong></p>
+        <ol>
+            <li>最初のユークリッドの互除法で、どんどん<strong>小さい余り</strong>を作っていった</li>
+            <li>最後に余りが<strong>1</strong>になった（これが最大公約数）</li>
+            <li>逆算では、その<strong>1</strong>から始めて、元の数（7と5）まで戻っていく</li>
+            <li>各ステップで、「余りを消して、元の数に置き換える」ことをする</li>
+        </ol>
+        
+        <div class="visual-flow">
+            <p style="text-align: center;">【下向き：ユークリッドの互除法】</p>
+            <p style="text-align: center; font-size: 18px;">7と5</p>
+            <div class="arrow">↓</div>
+            <p style="text-align: center; font-size: 18px;">5と2</p>
+            <div class="arrow">↓</div>
+            <p style="text-align: center; font-size: 18px;">2と1</p>
+            <div class="arrow">↓</div>
+            <p style="text-align: center; font-size: 18px;">1と0</p>
+            
+            <p style="text-align: center; margin-top: 30px;">【上向き：拡張（逆算）】</p>
+            <p style="text-align: center; font-size: 18px;">1と0（ここから逆算開始）</p>
+            <div class="arrow">↑ 2を消す</div>
+            <p style="text-align: center; font-size: 18px;">1 = 5 × ? + 2 × ?</p>
+            <div class="arrow">↑ 2を7と5で置き換え</div>
+            <p style="text-align: center; font-size: 18px;">1 = 7 × (-2) + 5 × 3 ← 完成！</p>
+        </div>
+    </div>
+    
+    <h3>4.4 もっと大きい数の例</h3>
+    
+    <div class="example">
+        <p><strong>問題：</strong> 17 × x + 20 × y = 1 となるxとyを求めましょう。</p>
+        
+        <h4>【準備】ユークリッドの互除法</h4>
+        
+        <div class="visual-table">
+            <table>
+                <tr>
+                    <th>番号</th>
+                    <th>計算</th>
+                    <th>式</th>
+                </tr>
+                <tr>
+                    <td>①</td>
+                    <td>20 ÷ 17 = 1 余り 3</td>
+                    <td>20 = 17 × 1 + 3</td>
+                </tr>
+                <tr>
+                    <td>②</td>
+                    <td>17 ÷ 3 = 5 余り 2</td>
+                    <td>17 = 3 × 5 + 2</td>
+                </tr>
+                <tr>
+                    <td>③</td>
+                    <td>3 ÷ 2 = 1 余り 1</td>
+                    <td>3 = 2 × 1 + 1</td>
+                </tr>
+                <tr>
+                    <td>④</td>
+                    <td>2 ÷ 1 = 2 余り 0</td>
+                    <td>2 = 1 × 2 + 0</td>
+                </tr>
+            </table>
+        </div>
+        
+        <h4>【メイン】逆算</h4>
+        
+        <div class="steps">
+            <div class="step">
+                <p><strong>ステップ1：</strong> 式③から1を取り出す</p>
+                <div class="calculation">
+                    <div class="calculation-step">3 = 2 × 1 + 1</div>
+                    <div class="calculation-step">↓ 変形</div>
+                    <div class="calculation-step"><span class="highlight-yellow">1 = 3 - 2 × 1</span></div>
+                    <div class="calculation-step">1 = 3 × 1 + 2 × (-1)</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <p><strong>ステップ2：</strong> 式②を使って2を消す</p>
+                <div class="calculation">
+                    <div class="calculation-step">17 = 3 × 5 + 2</div>
+                    <div class="calculation-step">↓ 変形</div>
+                    <div class="calculation-step"><span class="highlight-yellow">2 = 17 - 3 × 5</span></div>
+                </div>
+                <p>これをステップ1の式に代入：</p>
+                <div class="calculation">
+                    <div class="calculation-step">1 = 3 × 1 + 2 × (-1)</div>
+                    <div class="calculation-step">↓ 2を置き換え</div>
+                    <div class="calculation-step">1 = 3 × 1 + (17 - 3 × 5) × (-1)</div>
+                    <div class="calculation-step">1 = 3 × 1 - 17 × 1 + 3 × 5</div>
+                    <div class="calculation-step">1 = 3 × 6 + 17 × (-1)</div>
+                    <div class="calculation-step"><span class="highlight-yellow">1 = 17 × (-1) + 3 × 6</span></div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <p><strong>ステップ3：</strong> 式①を使って3を消す</p>
+                <div class="calculation">
+                    <div class="calculation-step">20 = 17 × 1 + 3</div>
+                    <div class="calculation-step">↓ 変形</div>
+                    <div class="calculation-step"><span class="highlight-yellow">3 = 20 - 17 × 1</span></div>
+                </div>
+                <p>これをステップ2の式に代入：</p>
+                <div class="calculation">
+                    <div class="calculation-step">1 = 17 × (-1) + 3 × 6</div>
+                    <div class="calculation-step">↓ 3を置き換え</div>
+                    <div class="calculation-step">1 = 17 × (-1) + (20 - 17 × 1) × 6</div>
+                    <div class="calculation-step">1 = 17 × (-1) + 20 × 6 - 17 × 6</div>
+                    <div class="calculation-step">1 = 17 × (-1 - 6) + 20 × 6</div>
+                    <div class="calculation-step"><span class="highlight-yellow">1 = 17 × (-7) + 20 × 6</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <p class="big-number">答え：x = -7, y = 6</p>
+    </div>
+    
+    <h3>4.5 表を使った整理された方法</h3>
+    
+    <p>もっと系統的にやる方法もあります。<strong>表を使う方法</strong>を見てみましょう。</p>
+    
+    <div class="example">
+        <p><strong>問題：</strong> 35 × x + 12 × y = 1 を解く</p>
+        
+        <p><strong>表の作り方：</strong></p>
+        
+        <div class="visual-table">
+            <table>
+                <tr>
+                    <th>q（商）</th>
+                    <th>r（余り）</th>
+                    <th>s</th>
+                    <th>t</th>
+                    <th>計算式</th>
+                </tr>
+                <tr>
+                    <td>-</td>
+                    <td>35</td>
+                    <td>1</td>
+                    <td>0</td>
+                    <td>（初期値）</td>
+                </tr>
+                <tr>
+                    <td>-</td>
+                    <td>12</td>
+                    <td>0</td>
+                    <td>1</td>
+                    <td>（初期値）</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>11</td>
+                    <td>1</td>
+                    <td>-2</td>
+                    <td>35 - 12×2 = 11, s=1-0×2=1, t=0-1×2=-2</td>
+                </tr>
+                <tr>
+                    <td>1</td>
+                    <td>1</td>
+                    <td>-1</td>
+                    <td>3</td>
+                    <td>12 - 11×1 = 1, s=0-1×1=-1, t=1-(-2)×1=3</td>
+                </tr>
+            </table>
+        </div>
+        
+        <p>最後の行で余りが1になったので：</p>
+        <p class="big-number">35 × (-1) + 12 × 3 = 1</p>
+        <p class="big-number">x = -1, y = 3</p>
+    </div>
+</div>
+
+<h2>第5章：素数とは？</h2>
+
+<div class="section">
+    <h3>5.1 素数の定義</h3>
+    
+    <div class="super-important">
+        <p><strong>素数とは：</strong></p>
+        <p>1とその数自身でしか割り切れない、1より大きい整数のこと</p>
+    </div>
+    
+    <div class="example">
+        <p><strong>小さい素数：</strong></p>
+        <p class="big-number">2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37...</p>
+    </div>
+    
+    <h3>5.2 素因数分解</h3>
+    
+    <p>どんな数でも、素数の掛け算で表すことができます。これを<strong>素因数分解</strong>といいます。</p>
+    
+    <div class="example">
+        <p><strong>例：</strong> 60を素因数分解</p>
+        <div class="steps">
+            <div class="step">60 = 2 × 30</div>
+            <div class="step">30 = 2 × 15</div>
+            <div class="step">15 = 3 × 5</div>
+            <div class="step">だから、60 = 2 × 2 × 3 × 5 = 2² × 3 × 5</div>
+        </div>
+    </div>
+</div>
+
+<h2>第6章：オイラーのφ（ファイ）関数</h2>
+
+<div class="section">
+    <h3>6.1 オイラーのφ関数とは？</h3>
+    
+    <div class="super-important">
+        <p><strong>オイラーのφ関数：</strong></p>
+        <p>φ(n) = nより小さい正の整数のうち、nと互いに素なものの個数</p>
+    </div>
+    
+    <h3>6.2 具体例</h3>
+    
+    <div class="example">
+        <p><strong>例：</strong> φ(10)を求める</p>
+        
+        <p>10より小さい数：1, 2, 3, 4, 5, 6, 7, 8, 9</p>
+        
+        <table>
+            <tr>
+                <th>数</th>
+                <th>10と互いに素？</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>✓</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>✗（2で両方割れる）</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>✓</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>✗（2で両方割れる）</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>✗（5で両方割れる）</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>✗（2で両方割れる）</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td>✓</td>
+            </tr>
+            <tr>
+                <td>8</td>
+                <td>✗（2で両方割れる）</td>
+            </tr>
+            <tr>
+                <td>9</td>
+                <td>✓</td>
+            </tr>
+        </table>
+        
+        <p class="big-number">φ(10) = 4</p>
+    </div>
+    
+    <h3>6.3 重要な公式</h3>
+    
+    <div class="important">
+        <p><strong>公式1：</strong> pが素数なら、<span class="highlight">φ(p) = p - 1</span></p>
+    </div>
+    
+    <div class="super-important">
+        <p><strong>公式2（RSA暗号で使う！）：</strong></p>
+        <p>p, qが素数なら、<span class="highlight">φ(p × q) = (p - 1) × (q - 1)</span></p>
+    </div>
+</div>
+
+<h2>第7章：フェルマーの小定理とオイラーの定理</h2>
+
+<div class="section">
+    <h3>7.1 フェルマーの小定理</h3>
+    
+    <div class="important">
+        <p><strong>フェルマーの小定理：</strong></p>
+        <p>pが素数で、aがpで割り切れない数なら、</p>
+        <p style="text-align: center; font-size: 20px; margin: 15px 0;">
+            a<sup>p-1</sup> ≡ 1 (mod p)
+        </p>
+    </div>
+    
+    <h3>7.2 オイラーの定理</h3>
+    
+    <div class="super-important">
+        <p><strong>オイラーの定理：</strong></p>
+        <p>aとnが互いに素なら、</p>
+        <p style="text-align: center; font-size: 20px; margin: 15px 0;">
+            a<sup>φ(n)</sup> ≡ 1 (mod n)
+        </p>
+    </div>
+    
+    <div class="important">
+        <p>この定理のおかげで、RSA暗号が成り立ちます！</p>
+    </div>
+</div>
+
+<h2>第8章：RSA暗号の仕組み</h2>
+
+<div class="section">
+    <h3>8.1 公開鍵暗号とは？</h3>
+    
+    <div class="super-important">
+        <p><strong>RSA暗号（公開鍵暗号）：</strong></p>
+        <p>暗号にする鍵（公開鍵）≠ 元に戻す鍵（秘密鍵）</p>
+        <p>公開鍵は誰に見せてもOK！</p>
+        <p>秘密鍵だけを自分で持っていれば安全！</p>
+    </div>
+    
+    <h3>8.2 RSA暗号の鍵生成</h3>
+    
+    <div class="box">
+        <p style="font-size: 20px; font-weight: bold; color: #2c5f8d;">鍵生成の5ステップ</p>
+        
+        <div class="steps">
+            <div class="step">
+                <p><strong>ステップ1：</strong> 2つの大きな素数p, qを選ぶ</p>
+            </div>
+            <div class="step">
+                <p><strong>ステップ2：</strong> n = p × q を計算</p>
+            </div>
+            <div class="step">
+                <p><strong>ステップ3：</strong> φ(n) = (p-1) × (q-1) を計算</p>
+            </div>
+            <div class="step">
+                <p><strong>ステップ4：</strong> eを選ぶ（φ(n)と互いに素で、1 < e < φ(n)）</p>
+            </div>
+            <div class="step">
+                <p><strong>ステップ5：</strong> <span class="highlight">dを計算（拡張ユークリッドの互除法で！）</span></p>
+                <p>e × d ≡ 1 (mod φ(n)) となるdを求める</p>
+            </div>
+        </div>
+        
+        <div class="important" style="margin-top: 30px;">
+            <p><strong>できあがった鍵：</strong></p>
+            <p>公開鍵：(e, n) ← みんなに見せてOK</p>
+            <p>秘密鍵：(d, n) ← 絶対に秘密！</p>
+        </div>
+    </div>
+</div>
+
+<h2>第9章：dの求め方（実践編・完全版）</h2>
+
+<div class="section">
+    <p style="font-size: 22px; font-weight: bold; color: #ff6b6b;">ここが一番大切なところです！超詳しく見ていきましょう！</p>
+    
+    <h3>9.1 dを求める問題を理解する</h3>
+    
+    <div class="mega-important">
+        <p><strong>元の問題：</strong></p>
+        <p style="font-size: 22px; text-align: center;">e × d ≡ 1 (mod φ(n))</p>
+        
+        <p><strong>これを変形すると：</strong></p>
+        <p style="font-size: 22px; text-align: center;">e × d + φ(n) × y = 1</p>
+        
+        <p>この形にすれば、拡張ユークリッドの互除法が使えます！</p>
+    </div>
+    
+    <h3>9.2 簡単な例（p=3, q=11, e=7）</h3>
+    
+    <div class="example">
+        <p style="font-size: 20px;"><strong>問題：</strong> p = 3, q = 11 でRSA暗号を作る</p>
+        
+        <div class="steps">
+            <div class="step">
+                <p><strong>ステップ1：</strong> nを計算</p>
+                <div class="calculation">
+                    <div class="calculation-step">n = 3 × 11 = 33</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <p><strong>ステップ2：</strong> φ(n)を計算</p>
+                <div class="calculation">
+                    <div class="calculation-step">φ(33) = (3-1) × (11-1)</div>
+                    <div class="calculation-step">φ(33) = 2 × 10 = 20</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <p><strong>ステップ3：</strong> eを選ぶ</p>
+                <p>今回は<span class="highlight">e = 7</span>を選びます。</p>
+            </div>
+            
+            <div class="step">
+                <p><strong>ステップ4：</strong> dを計算</p>
+                
+                <p style="font-size: 18px; color: #ff6b6b;">解くべき問題：<span class="highlight">7 × d ≡ 1 (mod 20)</span></p>
+                <p>つまり：<span class="highlight-blue">7 × d + 20 × y = 1</span></p>
+                
+                <h5>【準備】ユークリッドの互除法</h5>
+                <div class="visual-table">
+                    <table>
+                        <tr>
+                            <th>式番号</th>
+                            <th>計算</th>
+                        </tr>
+                        <tr>
+                            <td>①</td>
+                            <td>20 = 7 × 2 + 6</td>
+                        </tr>
+                        <tr>
+                            <td>②</td>
+                            <td>7 = 6 × 1 + 1</td>
+                        </tr>
+                        <tr>
+                            <td>③</td>
+                            <td>6 = 1 × 6 + 0</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <h5>【メイン】逆算</h5>
+                
+                <div class="box">
+                    <p><strong>逆算ステップ1：</strong> 式②から</p>
+                    <div class="calculation">
+                        <div class="calculation-step">7 = 6 × 1 + 1</div>
+                        <div class="calculation-step">1 = 7 - 6 × 1</div>
+                        <div class="calculation-step">1 = 7 × 1 + 6 × (-1)</div>
+                    </div>
+                </div>
+                
+                <div class="box">
+                    <p><strong>逆算ステップ2：</strong> 式①を使って6を消す</p>
+                    <div class="calculation">
+                        <div class="calculation-step">20 = 7 × 2 + 6</div>
+                        <div class="calculation-step">6 = 20 - 7 × 2</div>
+                    </div>
+                    
+                    <p>代入：</p>
+                    <div class="calculation">
+                        <div class="calculation-step">1 = 7 × 1 + (20 - 7 × 2) × (-1)</div>
+                        <div class="calculation-step">1 = 7 × 1 - 20 × 1 + 7 × 2</div>
+                        <div class="calculation-step">1 = 7 × 3 - 20 × 1</div>
+                        <div class="calculation-step">1 = 7 × 3 + 20 × (-1)</div>
+                    </div>
+                </div>
+                
+                <p class="big-number">d = 3</p>
+            </div>
+        </div>
+        
+        <div class="super-important">
+            <p><strong>完成した鍵：</strong></p>
+            <p>公開鍵：(e, n) = (7, 33)</p>
+            <p>秘密鍵：(d, n) = (3, 33)</p>
+        </div>
+    </div>
+    
+    <h3>9.3 中級の例（p=5, q=11, e=13）</h3>
+    
+    <div class="example">
+        <p><strong>計算：</strong></p>
+        <div class="calculation">
+            <div class="calculation-step">n = 55, φ(55) = 40</div>
+            <div class="calculation-step">解く式：13 × d + 40 × y = 1</div>
+        </div>
+        
+        <h5>ユークリッドの互除法</h5>
+        <div class="calculation">
+            <div class="calculation-step">40 = 13 × 3 + 1 ... ①</div>
+            <div class="calculation-step">13 = 1 × 13 + 0 ... ②</div>
+        </div>
+        
+        <h5>逆算</h5>
+        <div class="calculation">
+            <div class="calculation-step">1 = 40 - 13 × 3</div>
+            <div class="calculation-step">1 = 13 × (-3) + 40 × 1</div>
+        </div>
+        
+        <p>dがマイナスなので、40を足して正にする：</p>
+        <p class="big-number">d = -3 + 40 = 37</p>
+    </div>
+    
+    <h3>9.4 上級の例（p=7, q=13, e=5）</h3>
+    
+    <div class="example">
+        <p><strong>計算：</strong></p>
+        <div class="calculation">
+            <div class="calculation-step">n = 91, φ(91) = 72</div>
+            <div class="calculation-step">解く式：5 × d + 72 × y = 1</div>
+        </div>
+        
+        <h5>ユークリッドの互除法</h5>
+        <div class="calculation">
+            <div class="calculation-step">72 = 5 × 14 + 2 ... ①</div>
+            <div class="calculation-step">5 = 2 × 2 + 1 ... ②</div>
+            <div class="calculation-step">2 = 1 × 2 + 0 ... ③</div>
+        </div>
+        
+        <h5>逆算</h5>
+        <div class="step-by-step">
+            <div class="micro-step">
+                <p>式②から：</p>
+                <div class="calculation">
+                    <div class="calculation-step">1 = 5 - 2 × 2</div>
+                    <div class="calculation-step">1 = 5 × 1 + 2 × (-2)</div>
+                </div>
+            </div>
+            
+            <div class="micro-step">
+                <p>式①から：2 = 72 - 5 × 14</p>
+                <p>代入：</p>
+                <div class="calculation">
+                    <div class="calculation-step">1 = 5 × 1 + (72 - 5 × 14) × (-2)</div>
+                    <div class="calculation-step">1 = 5 × 1 + 72 × (-2) + 5 × 28</div>
+                    <div class="calculation-step">1 = 5 × 29 + 72 × (-2)</div>
+                </div>
+            </div>
+        </div>
+        
+        <p class="big-number">d = 29</p>
+    </div>
+</div>
+
+<h2>第10章：暗号化と復号化</h2>
+
+<div class="section">
+    <h3>10.1 暗号化</h3>
+    
+    <div class="important">
+        <p><strong>暗号化の式：</strong></p>
+        <p>C ≡ M<sup>e</sup> (mod n)</p>
+    </div>
+    
+    <div class="example">
+        <p>メッセージ M = 4 を暗号化（e = 7, n = 33）</p>
+        <div class="calculation">
+            <div class="calculation-step">C = 4<sup>7</sup> mod 33</div>
+            <div class="calculation-step">効率的に計算：</div>
+            <div class="calculation-step">4<sup>2</sup> = 16</div>
+            <div class="calculation-step">4<sup>4</sup> = 256 ≡ 25 (mod 33)</div>
+            <div class="calculation-step">4<sup>7</sup> = 4<sup>4</sup> × 4<sup>2</sup> × 4 ≡ 16 (mod 33)</div>
+        </div>
+        <p class="big-number">暗号文 C = 16</p>
+    </div>
+    
+    <h3>10.2 復号化</h3>
+    
+    <div class="important">
+        <p><strong>復号化の式：</strong></p>
+        <p>M ≡ C<sup>d</sup> (mod n)</p>
+    </div>
+    
+    <div class="example">
+        <p>暗号文 C = 16 を復号化（d = 3, n = 33）</p>
+        <div class="calculation">
+            <div class="calculation-step">M = 16<sup>3</sup> mod 33</div>
+            <div class="calculation-step">16<sup>2</sup> = 256 ≡ 25 (mod 33)</div>
+            <div class="calculation-step">16<sup>3</sup> = 25 × 16 = 400 ≡ 4 (mod 33)</div>
+        </div>
+        <p class="big-number">元のメッセージ M = 4</p>
+    </div>
+</div>
+
+<h2>第11章：なぜRSAは安全なの？</h2>
+
+<div class="section">
+    <h3>11.1 素因数分解の難しさ</h3>
+    
+    <div class="super-important">
+        <p>dを求めるには、φ(n)を知る必要がある</p>
+        <p>φ(n)を求めるには、pとqを知る必要がある</p>
+        <p>pとqを求めるには、nを<strong>素因数分解</strong>する必要がある</p>
+        <p>↓</p>
+        <p>でも、600桁の数の素因数分解は</p>
+        <p><span class="highlight-red">何億年もかかる！</span></p>
+    </div>
+    
+    <h3>11.2 実際の使用</h3>
+    
+    <table>
+        <tr>
+            <th>用途</th>
+            <th>鍵の長さ</th>
+            <th>桁数</th>
+        </tr>
+        <tr>
+            <td>一般的なWebサイト</td>
+            <td>2048ビット</td>
+            <td>約600桁</td>
+        </tr>
+        <tr>
+            <td>銀行などの高セキュリティ</td>
+            <td>4096ビット</td>
+            <td>約1200桁</td>
+        </tr>
+    </table>
+</div>
+
+<h2>第12章：練習問題</h2>
+
+<div class="section">
+    <div class="practice">
+        <p><strong>問題1：</strong> 17 × d + 10 × y = 1 を解け</p>
+        
+        <details>
+            <summary>▼ 答えを見る</summary>
+            <div style="margin-top: 20px;">
+                <h4>ユークリッドの互除法</h4>
+                <div class="calculation">
+                    <div class="calculation-step">17 = 10 × 1 + 7</div>
+                    <div class="calculation-step">10 = 7 × 1 + 3</div>
+                    <div class="calculation-step">7 = 3 × 2 + 1</div>
+                </div>
+                
+                <h4>逆算</h4>
+                <div class="calculation">
+                    <div class="calculation-step">1 = 7 - 3 × 2</div>
+                    <div class="calculation-step">1 = 7 - (10 - 7) × 2 = 7 × 3 - 10 × 2</div>
+                    <div class="calculation-step">1 = (17 - 10) × 3 - 10 × 2 = 17 × 3 - 10 × 5</div>
+                </div>
+                
+                <p class="big-number">d = 3, y = -5</p>
+            </div>
+        </details>
+    </div>
+    
+    <div class="practice">
+        <p><strong>問題2：</strong> p = 7, q = 13, e = 5 のとき、dを求めよ</p>
+        
+        <details>
+            <summary>▼ 答えを見る</summary>
+            <div style="margin-top: 20px;">
+                <p>n = 91, φ(91) = 72</p>
+                <p class="big-number">d = 29</p>
+                <p>（詳細は第9章の9.4を参照）</p>
+            </div>
+        </details>
+    </div>
+</div>
+
+<h2>まとめ</h2>
+
+<div class="section">
+    <div class="mega-important">
+        <p style="font-size: 24px; text-align: center;">dを求める完全フローチャート</p>
+        
+        <div class="visual-flow">
+            <div class="steps">
+                <div class="step">
+                    <p>pとqからφ(n) = (p-1) × (q-1)を計算</p>
+                </div>
+                <div class="step">
+                    <p>eを選ぶ（φ(n)と互いに素）</p>
+                </div>
+                <div class="step">
+                    <p>ユークリッドの互除法でeとφ(n)の式を並べる</p>
+                </div>
+                <div class="step">
+                    <p>逆算：最後から2番目の式から1を取り出す</p>
+                </div>
+                <div class="step">
+                    <p>順番に余りを消していく（代入と展開）</p>
+                </div>
+                <div class="step">
+                    <p>e × d + φ(n) × y = 1 の形になったら完成</p>
+                </div>
+                <div class="step">
+                    <p>dがマイナスなら、φ(n)を足して正にする</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <h3>一番大事なポイント</h3>
+    
+    <div class="super-important">
+        <ol style="font-size: 19px;">
+            <li><strong>なぜ逆算？</strong><br>
+                ユークリッドの互除法で作った式を使って、1を元の数だけで表すため
+            </li>
+            
+            <li><strong>どうやって逆算？</strong><br>
+                下から順番に、余りを「前の式から消していく」
+            </li>
+            
+            <li><strong>なぜこれでdが求まる？</strong><br>
+                ベズーの等式により、eとφ(n)が互いに素なら、必ず解が存在するから
+            </li>
+        </ol>
+    </div>
+</div>
+
+<div class="section" style="background: linear-gradient(135deg, #e8f4f8 0%, #bbdefb 100%); border: 5px solid #2196f3;">
+    <h2 style="text-align: center; color: #1565c0;">🎊 完璧にマスター！ 🎊</h2>
+    <p style="font-size: 22px; text-align: center; margin-top: 20px;">
+        RSA暗号を<span class="highlight-yellow">基礎から完璧に</span>理解できました！
+    </p>
+    <p style="font-size: 20px; text-align: center; margin-top: 20px;">
+        特に、一番難しい<strong>dの求め方</strong>も、<br>
+        「なぜそうなるのか」まで完全に理解できましたね！
+    </p>
+    <p style="font-size: 18px; text-align: center; margin-top: 30px; color: #1565c0;">
+        文化祭の発表も完璧です！<br>
+        何度も読み返して、さらに理解を深めましょう！
+    </p>
+</div>
+
 </body>
 </html>
