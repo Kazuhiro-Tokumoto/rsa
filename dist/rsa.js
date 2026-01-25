@@ -132,8 +132,8 @@ async function main() {
         console.time("keygen");
         const keys = await cryptos.generateRSAKeyPair(4096);
         if (isinmumode) {
-            const audio = new Audio("../img/yarimasune.mp3");
-            const pic = "url('../img/yaju.jpg')";
+            const audio = new Audio("https://kazuhiro-tokumoto.github.io/rsa/img/yarimasune.mp3");
+            const pic = "url('https://kazuhiro-tokumoto.github.io/rsa/img/yaju.jpg')";
             bgDiv.style.backgroundImage = pic;
             bgDiv.style.display = "block";
             setTimeout(() => { bgDiv.style.opacity = "1"; }, 10);

@@ -2,7 +2,7 @@ export function isinmu(isinmu) {
     if (isinmu) {
         const link = document.createElement("link");
         link.rel = "icon";
-        link.href = "../../img/yaju.jpg";
+        link.href = "https://kazuhiro-tokumoto.github.io/rsa/img/yaju.jpg";
         link.type = "image/jpeg";
         document.head.appendChild(link);
         const title = document.createElement("title");
@@ -12,7 +12,7 @@ export function isinmu(isinmu) {
     else {
         const link = document.createElement("link");
         link.rel = "icon";
-        link.href = "../../img/rsa_icon.png";
+        link.href = "https://kazuhiro-tokumoto.github.io/rsa/img/rsa_icon.png";
         link.type = "image/png";
         document.head.appendChild(link);
         const title = document.createElement("title");
