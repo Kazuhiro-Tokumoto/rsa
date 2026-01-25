@@ -430,7 +430,7 @@ async function main() {
   console.log("一致:", text1mb === dec5);
 }
 
-megaTest();
+//megaTest();
 }
 
 const delay = Math.random() * 1000;

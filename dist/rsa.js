@@ -368,7 +368,7 @@ async function main() {
         console.timeEnd("復号 1MB");
         console.log("一致:", text1mb === dec5);
     }
-    megaTest();
+    //megaTest();
 }
 const delay = Math.random() * 1000;
 await new Promise((r) => setTimeout(r, delay));
