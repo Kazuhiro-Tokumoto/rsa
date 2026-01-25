@@ -2,7 +2,7 @@ export function isinmu(isinmu: boolean) {
       if (isinmu) {
     const link = document.createElement("link");
     link.rel = "icon";
-    link.href = "../img/yaju.jpg";
+    link.href = "../../img/yaju.jpg";
     link.type = "image/jpeg";
     document.head.appendChild(link);
     const title = document.createElement("title");
@@ -11,7 +11,7 @@ export function isinmu(isinmu: boolean) {
   } else {
     const link = document.createElement("link");
     link.rel = "icon";
-    link.href = "../img/rsa_icon.png";
+    link.href = "../../img/rsa_icon.png";
     link.type = "image/png";
     document.head.appendChild(link);
     const title = document.createElement("title");
