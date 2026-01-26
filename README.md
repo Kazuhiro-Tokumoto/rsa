@@ -51,7 +51,7 @@
 - 素数生成（乱数・判定含む）  
   →セキュリティの基礎である大きな素数を生成
 - 公開鍵・秘密鍵ペアの生成  
-  →数学的原理（オイラーの���理, モジュラス演算）を忠実に実装
+  →数学的原理（オイラーの定理, モジュラス演算）を忠実に実装
 - 暗号化処理  
   →平文データを公開鍵で暗号化
 - 復号処理  
@@ -130,6 +130,6 @@ MIT
 - [Wikipedia: RSA暗号](https://ja.wikipedia.org/wiki/RSA%E6%9A%97%E5%8F%B7)
 - [RFC3447: PKCS#1](https://datatracker.ietf.org/doc/html/rfc3447)
 - [WebCrypto API](https://developer.mozilla.org/ja/docs/Web/API/Web_Crypto_API)  
-- TypeScript公���、MDN JavaScript、暗号関連書籍など
+- TypeScript公式、MDN JavaScript、暗号関連書籍など
 
 ```
