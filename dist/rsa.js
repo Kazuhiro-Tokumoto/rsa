@@ -1,7 +1,10 @@
 import { inmuData, privacyWords } from "./inmu.js";
 import { RSA } from "./mojyu-ru/rsa.js";
 import { isinmu } from "./mojyu-ru/inmu.js";
+import { createHeader } from "./header.js";
 async function main() {
+    const header = createHeader("RSA暗号", "Kazuhiro-Tokumoto", true);
+    document.body.insertBefore(header, document.body.firstChild);
     // --- 1. 演出用レイヤーの設定 ---
     const bgDiv = document.createElement("div");
     const bgAudio = document.createElement("audio");
