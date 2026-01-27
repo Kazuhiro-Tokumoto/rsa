@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Montgomery詳細デバッグ</title>
+  <style>
+    body { font-family: monospace; padding: 20px; max-width: 1400px; margin: 0 auto; }
+    .test { padding: 15px; margin: 10px 0; border: 1px solid #ccc; }
+    .success { background: #d4edda; }
+    .failure { background: #f8d7da; }
+    .debug { background: #f0f0f0; font-size: 12px; }
+    pre { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Montgomery法 詳細デバッグ</h1>
+  <button onclick="runDetailedTest()">詳細テスト実行</button>
+  <div id="results"></div>
+
+  <script src="bigint-wasm-wrapper.js"></script>
+  <script>
+    async function runDetailedTest() {
+      const results = document.getElementById('results');
+      results.innerHTML = '<h2>実行中...</h2>';
+      
+      const wasm = await BigIntWasm.load('./bigint.wasm');
+      
+      // テストケース
+      const tests = [
+        {
+          name: '小さな数',
+          base: 5n,
+          exp: 3n,
+          mod: 13n
+        },
+        {
+          name: '中程度の数',
+          base: 123n,
+          exp: 456n,
+          mod: 789n
+        },
+        {
+          name: '大きな数 (問題あり)',
+          base: 1234567890n,
+          exp: 99999n,
+          mod: 9999999999n
+        },
+        {
+          name: 'RSA用 (問題あり)',
+          base: 123456789n,
+          exp: 65537n,
+          mod: 1000000016000000063n
+        },
+        {
+          name: '非常に大きな指数',
+          base: 2n,
+          exp: 1000n,
+          mod: 1000000007n
+        }
+      ];
+      
+      for (const test of tests) {
+        results.innerHTML += `<div class="test"><h3>${test.name}</h3>`;
+        results.innerHTML += `
+          Base: ${test.base}<br>
+          Exp: ${test.exp}<br>
+          Mod: ${test.mod}<br>
+          Mod is odd: ${(test.mod & 1n) === 1n ? '✅' : '❌'}<br>
+          <br>
+        `;
+        
+        // JavaScript組み込み
+        function modPow(base, exp, mod) {
+          let result = 1n;
+          base = base % mod;
+          while (exp > 0n) {
+            if (exp % 2n === 1n) result = (result * base) % mod;
+            exp = exp >> 1n;
+            base = (base * base) % mod;
+          }
+          return result;
+        }
+        
+        const jsResult = modPow(test.base, test.exp, test.mod);
+        results.innerHTML += `<strong>JavaScript:</strong> ${jsResult}<br>`;
+        
+        // WASM Binary
+        const binaryResult = wasm.modExp(test.base, test.exp, test.mod);
+        results.innerHTML += `<strong>WASM Binary:</strong> ${binaryResult}<br>`;
+        
+        // WASM Montgomery
+        const montgomeryResult = wasm.modExpMontgomery(test.base, test.exp, test.mod);
+        results.innerHTML += `<strong>WASM Montgomery:</strong> ${montgomeryResult}<br>`;
+        
+        // 比較
+        const binaryMatch = jsResult === binaryResult;
+        const montgomeryMatch = jsResult === montgomeryResult;
+        
+        results.innerHTML += `<br>`;
+        results.innerHTML += `Binary vs JS: ${binaryMatch ? '✅' : '❌'}<br>`;
+        results.innerHTML += `Montgomery vs JS: ${montgomeryMatch ? '✅' : '❌'}<br>`;
+        
+        if (!montgomeryMatch) {
+          // 詳細デバッグ情報
+          results.innerHTML += `<div class="debug"><h4>デバッグ情報:</h4>`;
+          
+          // Base mod Mod を確認
+          const baseMod = wasm.mod(test.base, test.mod);
+          results.innerHTML += `Base mod Mod: ${baseMod}<br>`;
+          
+          // 小さな指数でテスト
+          if (test.exp > 10n) {
+            const smallExp = 10n;
+            const jsSmall = modPow(test.base, smallExp, test.mod);
+            const binarySmall = wasm.modExp(test.base, smallExp, test.mod);
+            const montgomerySmall = wasm.modExpMontgomery(test.base, smallExp, test.mod);
+            
+            results.innerHTML += `<br><strong>Exp=${smallExp}でテスト:</strong><br>`;
+            results.innerHTML += `JS: ${jsSmall}<br>`;
+            results.innerHTML += `Binary: ${binarySmall}<br>`;
+            results.innerHTML += `Montgomery: ${montgomerySmall}<br>`;
+            results.innerHTML += `Binary match: ${jsSmall === binarySmall ? '✅' : '❌'}<br>`;
+            results.innerHTML += `Montgomery match: ${jsSmall === montgomerySmall ? '✅' : '❌'}<br>`;
+          }
+          
+          // Exp=1でテスト
+          const jsOne = modPow(test.base, 1n, test.mod);
+          const binaryOne = wasm.modExp(test.base, 1n, test.mod);
+          const montgomeryOne = wasm.modExpMontgomery(test.base, 1n, test.mod);
+          
+          results.innerHTML += `<br><strong>Exp=1でテスト:</strong><br>`;
+          results.innerHTML += `JS: ${jsOne}<br>`;
+          results.innerHTML += `Binary: ${binaryOne}<br>`;
+          results.innerHTML += `Montgomery: ${montgomeryOne}<br>`;
+          results.innerHTML += `Binary match: ${jsOne === binaryOne ? '✅' : '❌'}<br>`;
+          results.innerHTML += `Montgomery match: ${jsOne === montgomeryOne ? '✅' : '❌'}<br>`;
+          
+          // Exp=2でテスト
+          const jsTwo = modPow(test.base, 2n, test.mod);
+          const binaryTwo = wasm.modExp(test.base, 2n, test.mod);
+          const montgomeryTwo = wasm.modExpMontgomery(test.base, 2n, test.mod);
+          
+          results.innerHTML += `<br><strong>Exp=2でテスト:</strong><br>`;
+          results.innerHTML += `JS: ${jsTwo}<br>`;
+          results.innerHTML += `Binary: ${binaryTwo}<br>`;
+          results.innerHTML += `Montgomery: ${montgomeryTwo}<br>`;
+          results.innerHTML += `Binary match: ${jsTwo === binaryTwo ? '✅' : '❌'}<br>`;
+          results.innerHTML += `Montgomery match: ${jsTwo === montgomeryTwo ? '✅' : '❌'}<br>`;
+          
+          results.innerHTML += `</div>`;
+        }
+        
+        if (binaryMatch && montgomeryMatch) {
+          results.innerHTML += `<strong>✅ すべて一致</strong></div>`;
+          results.children[results.children.length - 1].className = 'test success';
+        } else if (binaryMatch && !montgomeryMatch) {
+          results.innerHTML += `<strong>⚠️ Montgomeryのみ不一致</strong></div>`;
+          results.children[results.children.length - 1].className = 'test failure';
+        } else {
+          results.innerHTML += `<strong>❌ 両方とも不一致</strong></div>`;
+          results.children[results.children.length - 1].className = 'test failure';
+        }
+      }
+      
+      // R^2の計算テスト
+      results.innerHTML += `<div class="test"><h3>R^2 計算テスト</h3>`;
+      
+      const n = 13n;
+      const limbs = 1;
+      
+      // R = 2^64 (limbs=1の場合)
+      const R = 1n << 64n;
+      const RmodN = R % n;
+      const R2modN = (RmodN * RmodN) % n;
+      
+      results.innerHTML += `
+        N = ${n}<br>
+        R = 2^64 = ${R}<br>
+        R mod N = ${RmodN}<br>
+        R^2 mod N (correct) = ${R2modN}<br>
+      `;
+      
+      results.innerHTML += `</div>`;
+    }
+  </script>
+</body>
+</html>

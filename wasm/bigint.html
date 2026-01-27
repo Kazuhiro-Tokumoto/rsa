@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>computeR2直接テスト</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+    .log { background: #1e1e1e; padding: 10px; margin: 10px 0; border-left: 3px solid #569cd6; }
+    .value { color: #ce9178; }
+    .label { color: #4fc1ff; }
+    .success { color: #4ec9b0; }
+    .failure { color: #f48771; }
+  </style>
+</head>
+<body>
+  <h1>computeR2直接テスト</h1>
+  <button onclick="runTest()">テスト実行</button>
+  <div id="results"></div>
+
+  <script>
+    async function runTest() {
+      const results = document.getElementById('results');
+      results.innerHTML = '<h2>実行中...</h2>';
+      
+      // WASMを直接読み込む
+      const response = await fetch('./bigint.wasm');
+      const wasmBuffer = await response.arrayBuffer();
+      const { instance } = await WebAssembly.instantiate(wasmBuffer);
+      
+      const memory = instance.exports.memory;
+      const buffer = new BigUint64Array(memory.buffer);
+      
+      const N = 9999999999n;
+      const limbs = 1;
+      
+      results.innerHTML = '';
+      results.innerHTML += `<div class="log">N = ${N}</div>`;
+      results.innerHTML += `<div class="log">limbs = ${limbs}</div>`;
+      
+      // Nをメモリに書き込み
+      const n_ptr = 15000;
+      buffer[n_ptr / 8] = N;
+      
+      // R^2の出力先
+      const r2_ptr = 130000;
+      
+      // computeR2は直接エクスポートされていないので、
+      // modExpMontgomeryを呼んで、その中でcomputeR2が呼ばれる
+      
+      // しかし、computeR2の結果だけを取り出すために、
+      // メモリ位置を確認する
+      
+      // modExpMontgomeryの実装を見ると、r2_ptrは130000
+      
+      // 代わりに、手動でcomputeR2の動作をシミュレート
+      results.innerHTML += '<h3>Step 1: R mod N を計算</h3>';
+      
+      // r = 1 から開始
+      let r = 1n;
+      results.innerHTML += `<div class="log">初期値 r = ${r}</div>`;
+      
+      // 64回左シフト
+      for (let i = 0; i < 64; i++) {
+        r = r << 1n;
+        if (r >= N) {
+          r = r - N;
+        }
+      }
+      
+      results.innerHTML += `<div class="log">R mod N = ${r}</div>`;
+      
+      const R = 1n << 64n;
+      const RmodN_correct = R % N;
+      results.innerHTML += `<div class="log">正解 = ${RmodN_correct}</div>`;
+      results.innerHTML += `<div class="log">一致: ${r === RmodN_correct ? '✅' : '❌'}</div>`;
+      
+      results.innerHTML += '<h3>Step 2: (R mod N)^2 mod N を計算</h3>';
+      
+      const r_squared = r * r;
+      results.innerHTML += `<div class="log">(R mod N)^2 = ${r_squared}</div>`;
+      
+      // r_squared を N で割った余りを計算
+      // これをWASMのmod関数で計算してみる
+      
+      // r_squared をメモリに書き込み
+      const input_ptr = 120000;
+      buffer[input_ptr / 8] = BigInt.asUintN(64, r_squared);
+      buffer[input_ptr / 8 + 1] = BigInt.asUintN(64, r_squared >> 64n);
+      
+      results.innerHTML += `<div class="log">input[0] = ${buffer[input_ptr / 8]}</div>`;
+      results.innerHTML += `<div class="log">input[1] = ${buffer[input_ptr / 8 + 1]}</div>`;
+      
+      // mod関数を呼び出し
+      const result_ptr = 125000;
+      const modFunc = instance.exports.mod;
+      
+      // mod(input_ptr, n_ptr, result_ptr, 2 limbs, 1 limb)
+      modFunc(input_ptr, n_ptr, result_ptr, 2, 1);
+      
+      const result = buffer[result_ptr / 8];
+      results.innerHTML += `<div class="log">WASM mod result = ${result}</div>`;
+      
+      const correct = r_squared % N;
+      results.innerHTML += `<div class="log">正解 = ${correct}</div>`;
+      results.innerHTML += `<div class="log">一致: ${result === correct ? '✅' : '❌'}</div>`;
+      
+      results.innerHTML += '<h3>Step 3: modExpMontgomeryを実際に呼んでみる</h3>';
+      
+      const base = 1234567890n;
+      const exp = 1n;
+      
+      // メモリに書き込み
+      const base_ptr = 0;
+      const exp_ptr = 5000;
+      const mod_ptr = 10000;
+      const final_result_ptr = 15000;
+      
+      buffer[base_ptr / 8] = base;
+      buffer[exp_ptr / 8] = exp;
+      buffer[mod_ptr / 8] = N;
+      
+      // modExpMontgomeryを呼び出し
+      const modExpMontgomery = instance.exports.modExpMontgomery;
+      modExpMontgomery(base_ptr, exp_ptr, mod_ptr, final_result_ptr, limbs);
+      
+      const finalResult = buffer[final_result_ptr / 8];
+      results.innerHTML += `<div class="log">modExpMontgomery(${base}, ${exp}, ${N}) = ${finalResult}</div>`;
+      results.innerHTML += `<div class="log">正解 = ${base}</div>`;
+      results.innerHTML += `<div class="log">一致: ${finalResult === base ? '<span class="success">✅</span>' : '<span class="failure">❌</span>'}</div>`;
+      
+      // R^2を逆算
+      function modInverse(a, m) {
+        let [old_r, r] = [a, m];
+        let [old_s, s] = [1n, 0n];
+        while (r !== 0n) {
+          const quotient = old_r / r;
+          [old_r, r] = [r, old_r - quotient * r];
+          [old_s, s] = [s, old_s - quotient * s];
+        }
+        return old_s < 0n ? old_s + m : old_s;
+      }
+      
+      const baseInv = modInverse(base, N);
+      const Rinv = modInverse(R, N);
+      const R2_used = (finalResult * R % N) * baseInv % N;
+      
+      results.innerHTML += `<div class="log"><br>WASMが使用したR^2 (逆算) = ${R2_used}</div>`;
+      results.innerHTML += `<div class="log">正しいR^2 = ${correct}</div>`;
+      results.innerHTML += `<div class="log">一致: ${R2_used === correct ? '<span class="success">✅</span>' : '<span class="failure">❌</span>'}</div>`;
+    }
+  </script>
+</body>
+</html>

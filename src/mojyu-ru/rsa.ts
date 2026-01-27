@@ -67,12 +67,7 @@ export class RSA {
         return this.montgomeryModExpUltra(base, exp, mod);
       }
 
-      const maxBits = Math.max(
-        this.bitLength(base),
-        this.bitLength(exp),
-        this.bitLength(mod),
-      );
-      const limbs = Math.ceil(maxBits / 64);
+const limbs = Math.ceil(this.bitLength(mod) / 64);
 
       const view = new BigUint64Array(this.wasmMemory.buffer);
 

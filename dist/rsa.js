@@ -1,4 +1,7 @@
 import { RSA } from "./mojyu-ru/rsa.js";
+import { createHeader } from "./header.js";
+const header = createHeader('ブラウザ上で動作するRSA暗号ツール', '', false);
+document.body.prepend(header);
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.textContent = message;
