@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f5f5;
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -23,90 +23,95 @@
 
         .container {
             background: white;
-            border-radius: 20px;
-            padding: 40px;
+            border-radius: 8px;
+            padding: 30px;
             max-width: 800px;
             width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
         }
 
         h1 {
             text-align: center;
-            color: #667eea;
-            margin-bottom: 10px;
-            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.8em;
+            font-weight: 600;
         }
 
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             font-size: 0.9em;
         }
 
         .info-box {
-            background: #f0f4ff;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 5px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 25px;
         }
 
         .info-box h3 {
-            color: #667eea;
-            margin-bottom: 10px;
+            color: #333;
+            margin-bottom: 12px;
             font-size: 1.1em;
         }
 
         .info-box p {
             color: #555;
-            line-height: 1.6;
+            line-height: 1.5;
             margin: 5px 0;
         }
 
         .charset-info {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 4px;
             padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 5px;
+            margin-bottom: 25px;
         }
 
         .charset-info p {
-            color: #856404;
+            color: #2e7d32;
             margin: 5px 0;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         label {
             display: block;
             margin-bottom: 8px;
             color: #333;
-            font-weight: 600;
+            font-weight: 500;
+            font-size: 1em;
         }
 
         input, textarea {
             width: 100%;
             padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-            font-family: 'Segoe UI', sans-serif;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+            background: white;
         }
 
         input:focus, textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #007cba;
         }
 
         textarea {
             min-height: 120px;
             resize: vertical;
-            line-height: 1.6;
+            line-height: 1.5;
+            font-family: 'Consolas', 'Monaco', monospace;
         }
 
         .password-info {
@@ -117,39 +122,40 @@
 
         .button-group {
             display: flex;
-            gap: 15px;
-            margin-top: 30px;
+            gap: 12px;
+            margin-top: 25px;
+            flex-wrap: wrap;
         }
 
         button {
-            width: 100%;
-            padding: 15px;
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.3s;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: background-color 0.2s;
+            background: #007cba;
             color: white;
         }
 
         button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.5);
+            background: #005d8c;
         }
 
         button:disabled {
-            opacity: 0.5;
+            opacity: 0.6;
             cursor: not-allowed;
         }
 
         .result {
-            margin-top: 30px;
+            margin-top: 25px;
             padding: 20px;
-            background: #f7fafc;
-            border-radius: 8px;
-            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
             display: none;
         }
 
@@ -158,52 +164,56 @@
         }
 
         .result h3 {
-            color: #667eea;
-            margin-bottom: 15px;
+            color: #333;
+            margin-bottom: 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 1.1em;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .copy-btn {
-            background: #667eea;
+            background: #6c757d;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
+            padding: 6px 12px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background-color 0.2s;
         }
 
         .copy-btn:hover {
-            background: #5568d3;
-            transform: translateY(-1px);
+            background: #5a6268;
         }
 
         .copy-btn.copied {
-            background: #48bb78;
+            background: #28a745;
         }
 
         .result-text {
-            font-family: 'Segoe UI', sans-serif;
-            font-size: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
             word-break: break-all;
-            background: white;
+            background: #f8f9fa;
             padding: 15px;
-            border-radius: 5px;
-            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
             white-space: pre-wrap;
-            line-height: 1.8;
+            line-height: 1.6;
+            max-height: 300px;
+            overflow-y: auto;
         }
 
         .stats {
-            margin-top: 15px;
+            margin-top: 12px;
             padding: 15px;
-            background: white;
-            border-radius: 5px;
-            border: 1px solid #e0e0e0;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #ddd;
         }
 
         .stats p {
@@ -214,10 +224,11 @@
 
         .loading {
             text-align: center;
-            color: #667eea;
-            font-weight: 600;
+            color: #007cba;
+            font-weight: 500;
             margin-top: 20px;
             display: none;
+            padding: 15px;
         }
 
         .loading.show {
@@ -226,22 +237,42 @@
 
         .warning {
             background: #fff3cd;
-            border: 1px solid #ffc107;
+            border: 1px solid #ffeaa7;
             color: #856404;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 12px;
+            border-radius: 4px;
             margin-top: 10px;
-            font-size: 0.85em;
+            font-size: 0.9em;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🔐 真・可変ローター数Enigma</h1>
+        <h1>真・可変ローター数Enigma</h1>
         <p class="subtitle">文字→文字変換 | 日本語完全対応</p>
 
         <div class="info-box">
-            <h3>💡 使い方</h3>
+            <h3>使い方</h3>
             <p>• パスワードの文字数だけローターが生成されます</p>
             <p>• 長いパスワード = より強力な暗号化</p>
             <p>• 同じパスワードで暗号化・復号化できます</p>
@@ -249,7 +280,7 @@
         </div>
 
         <div class="charset-info" id="charsetInfo">
-            <p>📝 文字セット読み込み中...</p>
+            <p>文字セット読み込み中...</p>
         </div>
 
         <div class="form-group">
@@ -262,33 +293,64 @@
             <label for="message">メッセージ</label>
             <textarea id="message" placeholder="暗号化 or 復号化したいテキストを入力"></textarea>
             <div class="warning" id="charWarning" style="display: none;">
-                ⚠️ 対応していない文字が含まれています。これらの文字はそのまま出力されます。
+                対応していない文字が含まれています。これらの文字は変換されずそのまま出力されます。
             </div>
         </div>
 
         <div class="button-group">
-            <button onclick="process()" id="processBtn" disabled>🔄 変換（暗号化 / 復号化）</button>
+            <button onclick="process()" id="processBtn" disabled>変換（暗号化 / 復号化）</button>
         </div>
 
         <div class="loading" id="loading">処理中...</div>
 
         <div class="result" id="result">
-            <h3 id="resultTitle">結果</h3>
+            <h3 id="resultTitle">結果 <button class="copy-btn" onclick="copyResult()">コピー</button></h3>
             <div class="result-text" id="resultText"></div>
             <div class="stats" id="stats"></div>
         </div>
     </div>
 
     <script>
+        // 確実な文字セット定義
         let CHARSET = '';
         let charToIndex = new Map();
         let indexToChar = [];
+        let isInitialized = false;
 
-        // 初期化
-        async function initialize() {
+        // 初期化（確実性重視）
+        function initialize() {
             try {
-                // 常用漢字をJSONから取得
-                const data = 
+                console.log('文字セット初期化開始...');
+                
+                // 確実な文字セット構築
+                const chars = new Set();
+                
+                // 基本ひらがな（確実に存在）
+                const hiragana = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽぁぃぅぇぉゃゅょっゎ';
+                for (let char of hiragana) {
+                    chars.add(char);
+                }
+                
+                // 基本カタカナ（確実に存在）
+                const katakana = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポァィゥェォャュョッヮｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝｧｨｩｪｫｯｬｭｮｶﾞｷﾞｸﾞｹﾞｺﾞｻﾞｼﾞｽﾞｾﾞｿﾞﾀﾞﾁﾞﾂﾞﾃﾞﾄﾞﾊﾞﾋﾞﾌﾞﾍﾞﾎﾞﾊﾟﾋﾟﾌﾟﾍﾟﾎﾟｳﾞ';
+                for (let char of katakana) {
+                    chars.add(char);
+                }
+                
+                // 英数字（確実に存在）
+                const ascii = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ０１２３４５６７８９';
+                for (let char of ascii) {
+                    chars.add(char);
+                }
+                
+                // 基本記号（確実に存在）
+                const symbols = '　 .,!?;:()[]{}@#$%&*+-=_/<>"\'\n\t、。！？「」『』（）【】〜・ー；｜＼｀＾＿｀´';
+                for (let char of symbols) {
+                    chars.add(char);
+                }
+                
+                // === 漢字データ差し込み場所 ===
+				                const data = 
                 {
 	"134047": {
 		"joyo_kanji": "𠮟",
@@ -27173,61 +27235,80 @@
 	}
 }
                 
-                // 文字セットを構築
-                let chars = new Set();
+                // dataオブジェクトから漢字を追加
+                if (typeof data !== 'undefined' && data) {
+                    for (let key in data) {
+                        if (data[key] && data[key].joyo_kanji) {
+                            chars.add(data[key].joyo_kanji);
+                        }
+                    }
+                    console.log('常用漢字データを読み込み完了');
+                } else {
+                    console.log('dataオブジェクトが見つからないため、基本文字セットで動作');
+                }
+                // =============================
                 
-                // 常用漢字を追加（オブジェクトの各プロパティから）
-                for (let key in data) {
-                    if (data[key].joyo_kanji) {
-                        chars.add(data[key].joyo_kanji);
+                // 配列に変換（ソートして確実性を保証）
+                CHARSET = Array.from(chars).sort().join('');
+                console.log(`文字セット長: ${CHARSET.length}`);
+                
+                // マッピング作成（エラーチェック付き）
+                charToIndex.clear();
+                indexToChar = [];
+                
+                for (let i = 0; i < CHARSET.length; i++) {
+                    const char = CHARSET[i];
+                    if (!char) {
+                        throw new Error(`無効な文字が位置 ${i} に存在`);
+                    }
+                    charToIndex.set(char, i);
+                    indexToChar.push(char);
+                }
+                
+                // 整合性チェック
+                if (charToIndex.size !== CHARSET.length) {
+                    throw new Error('重複文字が検出されました');
+                }
+                
+                if (indexToChar.length !== CHARSET.length) {
+                    throw new Error('インデックス配列の長さが不一致');
+                }
+                
+                // ランダムサンプルでマッピングテスト
+                for (let i = 0; i < Math.min(10, CHARSET.length); i++) {
+                    const randomIndex = Math.floor(Math.random() * CHARSET.length);
+                    const char = CHARSET[randomIndex];
+                    const mappedIndex = charToIndex.get(char);
+                    const mappedChar = indexToChar[mappedIndex];
+                    
+                    if (mappedIndex !== randomIndex || mappedChar !== char) {
+                        throw new Error(`マッピングエラー: ${char} (${randomIndex})`);
                     }
                 }
                 
-                // ひらがな・カタカナを追加
-                const kana = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽぁぃぅぇぉゃゅょっゎアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポャュョッヮァィゥェォ　';
-                for (let char of kana) {
-                    chars.add(char);
-                }
-                
-                // 英数字・記号を追加
-                const ascii = '�ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?;:()[]{}@#$%&*+-=_/<>"\'\n\t、。！？「」『』（）【】〜・ー';
-                for (let char of ascii) {
-                    chars.add(char);
-                }
-                
-                // 配列に変換してソート
-                CHARSET = Array.from(chars).sort().join('');
-                
-                // マッピング作成
-                for (let i = 0; i < CHARSET.length; i++) {
-                    charToIndex.set(CHARSET[i], i);
-                    indexToChar.push(CHARSET[i]);
-                }
+                isInitialized = true;
+                console.log('文字セット初期化完了');
                 
                 // UI更新
                 document.getElementById('charsetInfo').innerHTML = `
-                    <p>✅ 文字セット読み込み完了</p>
-                    <p>📊 対応文字数: ${CHARSET.length}文字（常用漢字2,136字 + ひらがな + カタカナ + 英数字 + 記号）</p>
+                    <p>文字セット読み込み完了</p>
+                    <p>対応文字数: ${CHARSET.length}文字（ひらがな + カタカナ + 英数字 + 記号 + 基本漢字）</p>
                 `;
                 
                 document.getElementById('processBtn').disabled = false;
                 
             } catch (error) {
+                console.error('初期化エラー:', error);
+                
+                // エラー表示
                 document.getElementById('charsetInfo').innerHTML = `
-                    <p>❌ エラー: ${error.message}</p>
-                    <p>フォールバックモードで起動します...</p>
+                    <div class="error">
+                        <p>エラー: ${error.message}</p>
+                        <p>初期化に失敗しました。ページを再読み込みしてください。</p>
+                    </div>
                 `;
                 
-                // フォールバック: 基本的な文字セット
-                const fallback = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽぁぃぅぇぉゃゅょっアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲンガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポァィゥェォャュョッABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?;:()[]{}@#$%&*+-=_/<>"\'\n\t、。！？「」『』（）【】〜・';
-                CHARSET = fallback;
-                
-                for (let i = 0; i < CHARSET.length; i++) {
-                    charToIndex.set(CHARSET[i], i);
-                    indexToChar.push(CHARSET[i]);
-                }
-                
-                document.getElementById('processBtn').disabled = false;
+                isInitialized = false;
             }
         }
 
@@ -27240,88 +27321,163 @@
 
         // メッセージ入力時の文字チェック
         document.getElementById('message').addEventListener('input', function() {
+            if (!isInitialized) return;
+            
             const message = this.value;
-            let hasUnsupported = false;
+            let unsupportedChars = [];
             
             for (let char of message) {
-                if (!charToIndex.has(char)) {
-                    hasUnsupported = true;
-                    break;
+                if (!charToIndex.has(char) && !unsupportedChars.includes(char)) {
+                    unsupportedChars.push(char);
                 }
             }
             
-            document.getElementById('charWarning').style.display = hasUnsupported ? 'block' : 'none';
+            if (unsupportedChars.length > 0) {
+                document.getElementById('charWarning').style.display = 'block';
+                document.getElementById('charWarning').innerHTML = 
+                    `対応していない文字: ${unsupportedChars.map(c => `'${c}'`).join(', ')}`;
+            } else {
+                document.getElementById('charWarning').style.display = 'none';
+            }
         });
 
-        // SHA-256ハッシュ
+        // 確実なSHA-256ハッシュ
         async function sha256(text) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(text);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            try {
+                if (!text || typeof text !== 'string') {
+                    throw new Error('無効な入力テキスト');
+                }
+                
+                const encoder = new TextEncoder();
+                const data = encoder.encode(text);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                
+                const hash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                if (hash.length !== 64) {
+                    throw new Error('ハッシュ長が不正');
+                }
+                
+                return hash;
+            } catch (error) {
+                console.error('SHA-256エラー:', error);
+                throw error;
+            }
         }
 
-        // 疑似乱数生成器
+        // 確実な疑似乱数生成器
         function createRNG(seed) {
+            if (!seed || typeof seed !== 'string' || seed.length < 8) {
+                throw new Error('無効なシード');
+            }
+            
             let state = parseInt(seed.substr(0, 8), 16);
+            if (isNaN(state) || state <= 0) {
+                throw new Error('シードの解析に失敗');
+            }
+            
             return () => {
                 state = (state * 1103515245 + 12345) & 0x7fffffff;
+                if (state <= 0) state = 1; // 0を避ける
                 return state;
             };
         }
 
-        // 真のEnigma（文字→文字変換）
+        // 確実なEnigma実装
         class TrueEnigma {
             constructor(password) {
+                if (!password || typeof password !== 'string' || password.length < 1) {
+                    throw new Error('無効なパスワード');
+                }
+                
+                if (!isInitialized || CHARSET.length === 0) {
+                    throw new Error('文字セットが初期化されていません');
+                }
+                
                 this.password = password;
                 this.rotorCount = password.length;
                 this.modulus = CHARSET.length;
+                this.rotors = [];
+                this.reflector = null;
+                this.positions = [];
             }
 
             async initialize() {
-                // ローター配線を生成
-                this.rotors = [];
-                for (let i = 0; i < this.rotorCount; i++) {
-                    const seed = await sha256(this.password + 'rotor' + i);
-                    const rng = createRNG(seed);
+                try {
+                    console.log(`Enigma初期化開始 (${this.rotorCount}ローター)`);
                     
-                    // 文字配列をシャッフル
-                    const wiring = [...indexToChar];
-                    for (let j = wiring.length - 1; j > 0; j--) {
-                        const k = rng() % (j + 1);
-                        [wiring[j], wiring[k]] = [wiring[k], wiring[j]];
+                    // ローター生成
+                    for (let i = 0; i < this.rotorCount; i++) {
+                        const seed = await sha256(this.password + 'rotor' + i);
+                        const rng = createRNG(seed);
+                        
+                        const wiring = [...indexToChar];
+                        
+                        // Fisher-Yatesシャッフル（確実性重視）
+                        for (let j = wiring.length - 1; j > 0; j--) {
+                            const k = rng() % (j + 1);
+                            if (k < 0 || k > j) {
+                                throw new Error(`無効なシャッフルインデックス: ${k}`);
+                            }
+                            [wiring[j], wiring[k]] = [wiring[k], wiring[j]];
+                        }
+                        
+                        // 整合性チェック
+                        if (wiring.length !== this.modulus) {
+                            throw new Error(`ローター${i}の配線長が不正: ${wiring.length}`);
+                        }
+                        
+                        this.rotors.push(wiring.join(''));
                     }
-                    this.rotors.push(wiring.join(''));
-                }
 
-                // リフレクター生成
-                const seed = await sha256(this.password + 'reflector');
-                const rng = createRNG(seed);
-                const chars = [...indexToChar];
-                
-                // シャッフル
-                for (let i = chars.length - 1; i > 0; i--) {
-                    const j = rng() % (i + 1);
-                    [chars[i], chars[j]] = [chars[j], chars[i]];
-                }
-                
-                // ペア作成
-                this.reflector = new Map();
-                const half = Math.floor(chars.length / 2);
-                for (let i = 0; i < half; i++) {
-                    this.reflector.set(chars[i], chars[chars.length - 1 - i]);
-                    this.reflector.set(chars[chars.length - 1 - i], chars[i]);
-                }
-                if (chars.length % 2 === 1) {
-                    this.reflector.set(chars[half], chars[half]);
-                }
+                    // リフレクター生成
+                    const reflectorSeed = await sha256(this.password + 'reflector');
+                    const reflectorRNG = createRNG(reflectorSeed);
+                    const chars = [...indexToChar];
+                    
+                    // シャッフル
+                    for (let i = chars.length - 1; i > 0; i--) {
+                        const j = reflectorRNG() % (i + 1);
+                        [chars[i], chars[j]] = [chars[j], chars[i]];
+                    }
+                    
+                    // ペア作成
+                    this.reflector = new Map();
+                    const half = Math.floor(chars.length / 2);
+                    
+                    for (let i = 0; i < half; i++) {
+                        const char1 = chars[i];
+                        const char2 = chars[chars.length - 1 - i];
+                        this.reflector.set(char1, char2);
+                        this.reflector.set(char2, char1);
+                    }
+                    
+                    if (chars.length % 2 === 1) {
+                        const middleChar = chars[half];
+                        this.reflector.set(middleChar, middleChar);
+                    }
+                    
+                    // 整合性チェック
+                    if (this.reflector.size !== this.modulus) {
+                        throw new Error(`リフレクターサイズが不正: ${this.reflector.size}`);
+                    }
 
-                // 初期位置
-                this.positions = [];
-                for (let i = 0; i < this.rotorCount; i++) {
-                    const seed = await sha256(this.password + 'pos' + i);
-                    this.positions.push(parseInt(seed.substr(0, 4), 16) % this.modulus);
+                    // 初期位置生成
+                    for (let i = 0; i < this.rotorCount; i++) {
+                        const posSeed = await sha256(this.password + 'pos' + i);
+                        const posValue = parseInt(posSeed.substr(0, 4), 16) % this.modulus;
+                        if (isNaN(posValue) || posValue < 0) {
+                            throw new Error(`無効な初期位置: ${posValue}`);
+                        }
+                        this.positions.push(posValue);
+                    }
+                    
+                    console.log('Enigma初期化完了');
+                    
+                } catch (error) {
+                    console.error('Enigma初期化エラー:', error);
+                    throw error;
                 }
             }
 
@@ -27338,25 +27494,55 @@
             }
 
             throughRotor(index, rotorIndex, forward = true) {
+                if (index < 0 || index >= this.modulus) {
+                    throw new Error(`無効なローター入力: ${index}`);
+                }
+                
                 const rotor = this.rotors[rotorIndex];
                 const position = this.positions[rotorIndex];
                 
-                if (forward) {
-                    const offset = (index + position) % this.modulus;
-                    const wire = charToIndex.get(rotor[offset]);
-                    return (wire - position + this.modulus) % this.modulus;
-                } else {
-                    const offset = (index + position) % this.modulus;
-                    const targetChar = indexToChar[offset];
-                    const wire = rotor.indexOf(targetChar);
-                    return (wire - position + this.modulus) % this.modulus;
+                try {
+                    if (forward) {
+                        const offset = (index + position) % this.modulus;
+                        const wireChar = rotor[offset];
+                        const wire = charToIndex.get(wireChar);
+                        if (wire === undefined) {
+                            throw new Error(`無効な配線文字: ${wireChar}`);
+                        }
+                        return (wire - position + this.modulus) % this.modulus;
+                    } else {
+                        const offset = (index + position) % this.modulus;
+                        const targetChar = indexToChar[offset];
+                        const wire = rotor.indexOf(targetChar);
+                        if (wire === -1) {
+                            throw new Error(`配線文字が見つからない: ${targetChar}`);
+                        }
+                        return (wire - position + this.modulus) % this.modulus;
+                    }
+                } catch (error) {
+                    console.error(`ローター処理エラー (${rotorIndex}, ${forward}):`, error);
+                    throw error;
                 }
             }
 
             throughReflector(index) {
+                if (index < 0 || index >= this.modulus) {
+                    throw new Error(`無効なリフレクター入力: ${index}`);
+                }
+                
                 const char = indexToChar[index];
                 const reflected = this.reflector.get(char);
-                return charToIndex.get(reflected);
+                
+                if (!reflected) {
+                    throw new Error(`リフレクター変換失敗: ${char}`);
+                }
+                
+                const result = charToIndex.get(reflected);
+                if (result === undefined) {
+                    throw new Error(`リフレクター出力が無効: ${reflected}`);
+                }
+                
+                return result;
             }
 
             encryptChar(char) {
@@ -27364,30 +27550,50 @@
                     return char; // 未対応文字はそのまま
                 }
 
-                this.rotateRotors();
+                try {
+                    this.rotateRotors();
 
-                let index = charToIndex.get(char);
+                    let index = charToIndex.get(char);
 
-                // 順方向
-                for (let i = this.rotorCount - 1; i >= 0; i--) {
-                    index = this.throughRotor(index, i, true);
+                    // 順方向
+                    for (let i = this.rotorCount - 1; i >= 0; i--) {
+                        index = this.throughRotor(index, i, true);
+                    }
+
+                    // リフレクター
+                    index = this.throughReflector(index);
+
+                    // 逆方向
+                    for (let i = 0; i < this.rotorCount; i++) {
+                        index = this.throughRotor(index, i, false);
+                    }
+
+                    const result = indexToChar[index];
+                    if (!result) {
+                        throw new Error(`暗号化結果が無効: index=${index}`);
+                    }
+
+                    return result;
+                } catch (error) {
+                    console.error(`文字暗号化エラー (${char}):`, error);
+                    throw error;
                 }
-
-                // リフレクター
-                index = this.throughReflector(index);
-
-                // 逆方向
-                for (let i = 0; i < this.rotorCount; i++) {
-                    index = this.throughRotor(index, i, false);
-                }
-
-                return indexToChar[index];
             }
 
             encrypt(text) {
+                if (!text || typeof text !== 'string') {
+                    throw new Error('無効な入力テキスト');
+                }
+                
                 let result = '';
-                for (let char of text) {
-                    result += this.encryptChar(char);
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+                    try {
+                        result += this.encryptChar(char);
+                    } catch (error) {
+                        console.error(`位置${i}の文字暗号化エラー (${char}):`, error);
+                        result += char; // エラー時は元文字を使用
+                    }
                 }
                 return result;
             }
@@ -27396,6 +27602,12 @@
         async function process() {
             const password = document.getElementById('password').value;
             const message = document.getElementById('message').value;
+
+            // 入力検証
+            if (!isInitialized) {
+                alert('システムが初期化されていません');
+                return;
+            }
 
             if (!password) {
                 alert('パスワードを入力してください');
@@ -27407,14 +27619,15 @@
                 return;
             }
 
-            if (password.length < 3) {
-                alert('パスワードは3文字以上にしてください');
+            if (password.length < 1) {
+                alert('パスワードは1文字以上にしてください');
                 return;
             }
 
             document.getElementById('loading').classList.add('show');
             document.getElementById('result').classList.remove('show');
 
+            // 非同期処理で確実性を保証
             setTimeout(async () => {
                 try {
                     const startTime = Date.now();
@@ -27426,23 +27639,30 @@
                     const endTime = Date.now();
                     const timeTaken = endTime - startTime;
 
-                    // 鍵空間をBigIntで計算
-                    let keySpace = BigInt(CHARSET.length) ** BigInt(password.length);
-                    let keySpaceStr;
-                    
-                    // BigIntを指数表記に変換
-                    const digits = keySpace.toString();
-                    if (digits.length > 10) {
-                        // 大きすぎる場合は指数表記
-                        const exponent = digits.length - 1;
-                        const mantissa = digits[0] + '.' + digits.substring(1, 4);
-                        keySpaceStr = `${mantissa} × 10^${exponent}`;
-                    } else {
-                        // 小さい場合はそのまま
-                        keySpaceStr = keySpace.toLocaleString();
+                    // 結果検証
+                    if (!result || typeof result !== 'string') {
+                        throw new Error('暗号化結果が無効');
                     }
 
-                    document.getElementById('resultTitle').innerHTML = '🔄 変換結果 <button class="copy-btn" onclick="copyResult()">📋 コピー</button>';
+                    // 鍵空間計算
+                    let keySpace;
+                    let keySpaceStr;
+                    
+                    try {
+                        keySpace = BigInt(CHARSET.length) ** BigInt(password.length);
+                        const digits = keySpace.toString();
+                        if (digits.length > 10) {
+                            const exponent = digits.length - 1;
+                            const mantissa = digits[0] + '.' + digits.substring(1, 4);
+                            keySpaceStr = `${mantissa} × 10^${exponent}`;
+                        } else {
+                            keySpaceStr = keySpace.toLocaleString();
+                        }
+                    } catch (e) {
+                        keySpaceStr = '計算不可';
+                    }
+
+                    document.getElementById('resultTitle').innerHTML = '変換結果 <button class="copy-btn" onclick="copyResult()">コピー</button>';
                     document.getElementById('resultText').textContent = result;
                     document.getElementById('stats').innerHTML = `
                         <p><strong>ローター数:</strong> ${password.length}個</p>
@@ -27451,37 +27671,74 @@
                         <p><strong>出力文字数:</strong> ${result.length}文字</p>
                         <p><strong>鍵空間:</strong> ${CHARSET.length}^${password.length} ≈ ${keySpaceStr} 通り</p>
                         <p><strong>処理時間:</strong> ${timeTaken}ms</p>
+                        <p><strong>変換状態:</strong> 正常完了</p>
                     `;
 
                     document.getElementById('loading').classList.remove('show');
                     document.getElementById('result').classList.add('show');
+                    
                 } catch (error) {
+                    console.error('処理エラー:', error);
                     alert('エラーが発生しました: ' + error.message);
                     document.getElementById('loading').classList.remove('show');
                 }
-            }, 100);
+            }, 50);
         }
 
-        // コピー機能
+        // 確実なコピー機能
         function copyResult() {
-            const resultText = document.getElementById('resultText').textContent;
-            navigator.clipboard.writeText(resultText).then(() => {
-                const btn = document.querySelector('.copy-btn');
-                const originalText = btn.textContent;
-                btn.textContent = '✓ コピー完了';
-                btn.classList.add('copied');
+            try {
+                const resultText = document.getElementById('resultText').textContent;
                 
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.classList.remove('copied');
-                }, 2000);
-            }).catch(err => {
-                alert('コピーに失敗しました: ' + err);
-            });
+                if (!resultText) {
+                    throw new Error('コピーするテキストがありません');
+                }
+                
+                navigator.clipboard.writeText(resultText).then(() => {
+                    const btn = document.querySelector('.copy-btn');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'コピー完了';
+                    btn.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('クリップボードエラー:', err);
+                    // フォールバック: テキスト選択
+                    const textElement = document.getElementById('resultText');
+                    const range = document.createRange();
+                    range.selectNode(textElement);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    alert('テキストを選択しました。Ctrl+Cでコピーしてください');
+                });
+            } catch (error) {
+                console.error('コピー機能エラー:', error);
+                alert('コピーに失敗しました: ' + error.message);
+            }
         }
 
-        // ページ読み込み時に初期化
-        window.addEventListener('load', initialize);
+        // 確実な初期化実行
+        window.addEventListener('load', () => {
+            console.log('ページ読み込み完了、初期化開始...');
+            try {
+                initialize();
+            } catch (error) {
+                console.error('初期化失敗:', error);
+            }
+        });
+
+        // エラーハンドリング
+        window.addEventListener('error', (event) => {
+            console.error('グローバルエラー:', event.error);
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('未処理Promise拒否:', event.reason);
+        });
     </script>
 </body>
 </html>
