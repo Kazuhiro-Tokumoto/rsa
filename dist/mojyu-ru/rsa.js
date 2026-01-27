@@ -742,7 +742,7 @@ export class RSA {
         }
         return this.montgomeryModExpUltra(base, exp, mod);
     }
-    async modExpAsync(base, exp, mod) {
+    modExpAsync(base, exp, mod) {
         if (base < 0n || exp < 0n || mod <= 0n) {
             throw new Error("modExpAsync: 不正な入力値");
         }

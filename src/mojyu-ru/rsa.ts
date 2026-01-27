@@ -1035,11 +1035,11 @@ private montgomeryModExpUltra(
     return this.montgomeryModExpUltra(base, exp, mod);
   }
 
-private async modExpAsync(
+private modExpAsync(
   base: bigint,
   exp: bigint,
   mod: bigint,
-): Promise<bigint> {
+): bigint {
   if (base < 0n || exp < 0n || mod <= 0n) {
     throw new Error("modExpAsync: 不正な入力値");
   }
