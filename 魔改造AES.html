@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AES + 256文字マップ暗号システム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Hiragino Kaku Gothic Pro', 'Yu Gothic Medium', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.8em;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .info-panel {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-panel::before {
+            display: none;
+        }
+
+        .info-panel h3 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 1.1em;
+        }
+
+        .info-panel h3::before {
+            display: none;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .feature-item {
+            background: white;
+            padding: 12px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-shadow: none;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 1em;
+        }
+
+        input[type="text"], input[type="file"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+            background: white;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #007cba;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            line-height: 1.5;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        button::before {
+            display: none;
+        }
+
+        .btn-encrypt {
+            background: #007cba;
+            color: white;
+        }
+
+        .btn-encrypt:hover {
+            background: #005d8c;
+        }
+
+        .btn-decrypt {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-decrypt:hover {
+            background: #1e7e34;
+        }
+
+        button:active {
+            transform: none;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-top: 25px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .result-header h3 {
+            color: #333;
+            font-size: 1.1em;
+        }
+
+        .result-header h3::before {
+            display: none;
+        }
+
+        .copy-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            margin-left: 8px;
+        }
+
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+
+        .copy-btn.copied {
+            background: #28a745;
+        }
+
+        .download-btn {
+            background: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            margin-left: 8px;
+        }
+
+        .download-btn:hover {
+            background: #e0a800;
+        }
+
+        .result-text {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            word-break: break-all;
+            line-height: 1.6;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            color: #333;
+            white-space: pre-wrap;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-top: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #007cba;
+            font-weight: 500;
+            margin-top: 20px;
+            display: none;
+            padding: 15px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ddd;
+            border-top: 2px solid #007cba;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .sample-text {
+            background: #f8f9fa;
+            border-left: 3px solid #007cba;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            color: #495057;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                flex: none;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AES + 256文字マップ暗号システム</h1>
+        <p class="subtitle">任意のファイルを美しい日本語風文字列に暗号化</p>
+
+        <div class="info-panel">
+            <h3>魔改造AES</h3>
+            <p>標準AES暗号化を日本語風文字列出力に改造したシステムです。</p>
+        </div>
+
+        <div class="form-section">
+            <div class="form-group">
+                <label for="password">パスワード:</label>
+                <input type="text" id="password" placeholder="強力なパスワードを入力してください">
+            </div>
+
+            <div class="form-group">
+                <label for="fileInput">ファイル選択 (またはテキスト入力):</label>
+                <input type="file" id="fileInput">
+                <div class="warning">
+                    <strong>テキスト入力の場合:</strong> ファイルの代わりに下のテキストエリアに内容を入力することもできます。
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="textInput">テキスト入力:</label>
+                <textarea id="textInput" placeholder="暗号化したいテキストを入力するか、上でファイルを選択してください..."></textarea>
+                <div class="sample-text">
+                    サンプルテキスト: 「これは秘密のメッセージです。AESで暗号化され、美しい日本語風文字列に変換されます。」
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="encryptedInput">復号化用暗号文:</label>
+                <textarea id="encryptedInput" placeholder="復号化したい暗号文をここに貼り付けてください..."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-encrypt" onclick="encryptData()">暗号化</button>
+                <button class="btn-decrypt" onclick="decryptData()">復号化</button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <span class="spinner"></span>
+            処理中です...
+        </div>
+
+        <div class="result-section" id="result">
+            <div class="result-header">
+                <h3 id="resultTitle">結果</h3>
+                <div>
+                    <button class="copy-btn" onclick="copyResult()" id="copyBtn">コピー</button>
+                    <button class="download-btn" onclick="downloadResult()" id="downloadBtn" style="display: none;">ダウンロード</button>
+                </div>
+            </div>
+            <div class="result-text" id="resultText"></div>
+            <div class="stats" id="stats"></div>
+        </div>
+    </div>
+
+    <script>
+        // 256文字マップの生成
+        function createCharMap() {
+            const chars = [];
+            
+            // 英小文字 (26文字): a-z
+            for (let i = 0; i < 26; i++) {
+                chars.push(String.fromCharCode(97 + i));
+            }
+            
+            // 英大文字 (26文字): A-Z
+            for (let i = 0; i < 26; i++) {
+                chars.push(String.fromCharCode(65 + i));
+            }
+            
+            // 数字 (10文字): 0-9
+            for (let i = 0; i < 10; i++) {
+                chars.push(String.fromCharCode(48 + i));
+            }
+            
+            // 基本記号 (16文字)
+            const symbols = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '-', '=', '[', ']'];
+            chars.push(...symbols);
+            
+            // ひらがな (83文字)
+            const hiragana = [
+                'あ', 'い', 'う', 'え', 'お', 'か', 'き', 'く', 'け', 'こ',
+                'さ', 'し', 'す', 'せ', 'そ', 'た', 'ち', 'つ', 'て', 'と',
+                'な', 'に', 'ぬ', 'ね', 'の', 'は', 'ひ', 'ふ', 'へ', 'ほ',
+                'ま', 'み', 'む', 'め', 'も', 'や', 'ゆ', 'よ', 'ら', 'り',
+                'る', 'れ', 'ろ', 'わ', 'を', 'ん',
+                'が', 'ぎ', 'ぐ', 'げ', 'ご', 'ざ', 'じ', 'ず', 'ぜ', 'ぞ',
+                'だ', 'ぢ', 'づ', 'で', 'ど', 'ば', 'び', 'ぶ', 'べ', 'ぼ',
+                'ぱ', 'ぴ', 'ぷ', 'ぺ', 'ぽ',
+                'ぁ', 'ぃ', 'ぅ', 'ぇ', 'ぉ', 'っ', 'ゃ', 'ゅ', 'ょ', 'ゎ'
+            ];
+            
+            // カタカナ (86文字)
+            const katakana = [
+                'ア', 'イ', 'ウ', 'エ', 'オ', 'カ', 'キ', 'ク', 'ケ', 'コ',
+                'サ', 'シ', 'ス', 'セ', 'ソ', 'タ', 'チ', 'ツ', 'テ', 'ト',
+                'ナ', 'ニ', 'ヌ', 'ネ', 'ノ', 'ハ', 'ヒ', 'フ', 'ヘ', 'ホ',
+                'マ', 'ミ', 'ム', 'メ', 'モ', 'ヤ', 'ユ', 'ヨ', 'ラ', 'リ',
+                'ル', 'レ', 'ロ', 'ワ', 'ヲ', 'ン',
+                'ガ', 'ギ', 'グ', 'ゲ', 'ゴ', 'ザ', 'ジ', 'ズ', 'ゼ', 'ゾ',
+                'ダ', 'ヂ', 'ヅ', 'デ', 'ド', 'バ', 'ビ', 'ブ', 'ベ', 'ボ',
+                'パ', 'ピ', 'プ', 'ペ', 'ポ',
+                'ァ', 'ィ', 'ゥ', 'ェ', 'ォ', 'ッ', 'ャ', 'ュ', 'ョ', 'ヮ',
+                'ヴ', 'ー', '・', '〜'
+            ];
+            
+            chars.push(...hiragana);
+            chars.push(...katakana);
+            
+            // 256文字になるまで調整
+            const remaining = 256 - chars.length;
+            const additionalChars = [' ', '。', '、', '？', '！', '〈', '〉', '《', '》', '「', '」', '『', '』', '【', '】'];
+            for (let i = 0; i < remaining && i < additionalChars.length; i++) {
+                chars.push(additionalChars[i]);
+            }
+            
+            // 正確に256文字
+            const finalChars = chars.slice(0, 256);
+            
+            // 逆引きマップ作成
+            const charToByteMap = new Map();
+            finalChars.forEach((char, index) => {
+                charToByteMap.set(char, index);
+            });
+            
+            return {
+                byteToChar: finalChars,
+                charToByte: charToByteMap
+            };
+        }
+
+        // グローバル文字マップ
+        const CHAR_MAP = createCharMap();
+
+        // バイナリ → 文字列変換
+        function binaryToText(buffer) {
+            const bytes = new Uint8Array(buffer);
+            return Array.from(bytes).map(byte => CHAR_MAP.byteToChar[byte]).join('');
+        }
+
+        // 文字列 → バイナリ変換
+        function textToBinary(text) {
+            const bytes = [];
+            for (let i = 0; i < text.length; i++) {
+                const byte = CHAR_MAP.charToByte.get(text[i]);
+                if (byte === undefined) {
+                    throw new Error(`未対応文字が含まれています: ${text[i]}`);
+                }
+                bytes.push(byte);
+            }
+            return new Uint8Array(bytes).buffer;
+        }
+
+        // パスワードから鍵を導出
+        async function deriveKey(password) {
+            const encoder = new TextEncoder();
+            const passwordData = encoder.encode(password);
+            
+            // SHA-256でハッシュ化
+            const hashBuffer = await crypto.subtle.digest('SHA-256', passwordData);
+            
+            // AES鍵として使用
+            return await crypto.subtle.importKey(
+                'raw',
+                hashBuffer,
+                { name: 'AES-GCM' },
+                false,
+                ['encrypt', 'decrypt']
+            );
+        }
+
+        // データの暗号化
+        async function encryptData() {
+            const password = document.getElementById('password').value;
+            const fileInput = document.getElementById('fileInput');
+            const textInput = document.getElementById('textInput').value;
+
+            if (!password) {
+                alert('パスワードを入力してください');
+                return;
+            }
+
+            let data;
+            if (fileInput.files.length > 0) {
+                data = await fileInput.files[0].arrayBuffer();
+            } else if (textInput.trim()) {
+                const encoder = new TextEncoder();
+                data = encoder.encode(textInput).buffer;
+            } else {
+                alert('ファイルを選択するかテキストを入力してください');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const startTime = Date.now();
+
+                // 鍵の導出
+                const key = await deriveKey(password);
+
+                // ランダムIV生成
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+
+                // AES-GCM暗号化
+                const encryptedBuffer = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv: iv },
+                    key,
+                    data
+                );
+
+                // IV + 暗号化データを結合
+                const combinedBuffer = new ArrayBuffer(iv.length + encryptedBuffer.byteLength);
+                const combinedView = new Uint8Array(combinedBuffer);
+                combinedView.set(iv, 0);
+                combinedView.set(new Uint8Array(encryptedBuffer), iv.length);
+
+                // 文字列に変換
+                const encryptedText = binaryToText(combinedBuffer);
+
+                const endTime = Date.now();
+                const processingTime = endTime - startTime;
+
+                // 結果表示
+                showResult(
+                    '暗号化完了',
+                    encryptedText,
+                    {
+                        '元データサイズ': `${data.byteLength} bytes`,
+                        '暗号文長': `${encryptedText.length} 文字`,
+                        '処理時間': `${processingTime} ms`,
+                        '圧縮率': `${((encryptedText.length / data.byteLength) * 100).toFixed(1)}%`
+                    }
+                );
+
+            } catch (error) {
+                alert('暗号化エラー: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // データの復号化
+        async function decryptData() {
+            const password = document.getElementById('password').value;
+            const encryptedInput = document.getElementById('encryptedInput').value;
+
+            if (!password || !encryptedInput.trim()) {
+                alert('パスワードと暗号文を入力してください');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const startTime = Date.now();
+
+                // 文字列をバイナリに変換
+                const combinedBuffer = textToBinary(encryptedInput.trim());
+
+                // IV と暗号化データを分離
+                const iv = combinedBuffer.slice(0, 12);
+                const encryptedData = combinedBuffer.slice(12);
+
+                // 鍵の導出
+                const key = await deriveKey(password);
+
+                // AES-GCM復号化
+                const decryptedBuffer = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: new Uint8Array(iv) },
+                    key,
+                    encryptedData
+                );
+
+                // 復号化されたデータをグローバル変数に保存（ダウンロード用）
+                window.decryptedData = decryptedBuffer;
+
+                // テキストとして表示を試行
+                let resultText;
+                let dataType;
+                let isTextData = false;
+                
+                try {
+                    const decoder = new TextDecoder('utf-8', { fatal: true });
+                    resultText = decoder.decode(decryptedBuffer);
+                    
+                    // テキストデータかどうかの詳細判定
+                    if (isPrintableText(resultText)) {
+                        dataType = 'テキストデータ';
+                        isTextData = true;
+                    } else {
+                        throw new Error('バイナリデータ');
+                    }
+                } catch (e) {
+                    // バイナリデータの場合
+                    const bytes = new Uint8Array(decryptedBuffer);
+                    
+                    // ファイルタイプを推測
+                    const fileType = detectFileType(bytes);
+                    dataType = fileType;
+                    isTextData = false;
+                    
+                    // バイナリデータの16進ダンプ表示（最初の200バイト）
+                    const displayBytes = bytes.slice(0, 200);
+                    resultText = Array.from(displayBytes)
+                        .map((b, i) => {
+                            const hex = b.toString(16).padStart(2, '0').toUpperCase();
+                            return (i % 16 === 0 ? '\n' : '') + hex + ' ';
+                        })
+                        .join('') + (bytes.length > 200 ? '\n\n... (残り ' + (bytes.length - 200) + ' bytes)' : '');
+                }
+
+                const endTime = Date.now();
+                const processingTime = endTime - startTime;
+
+                // ダウンロードボタンの表示制御
+                const downloadBtn = document.getElementById('downloadBtn');
+                if (!isTextData) {
+                    downloadBtn.style.display = 'inline-block';
+                    downloadBtn.setAttribute('data-filetype', dataType.toLowerCase().replace(/[^a-z]/g, ''));
+                } else {
+                    downloadBtn.style.display = 'none';
+                }
+
+                // 結果表示
+                showResult(
+                    '復号化完了',
+                    resultText,
+                    {
+                        'データ種別': dataType,
+                        '復号化サイズ': `${decryptedBuffer.byteLength.toLocaleString()} bytes`,
+                        '処理時間': `${processingTime} ms`,
+                        '暗号文長': `${encryptedInput.length.toLocaleString()} 文字`,
+                        'ファイル判定': isTextData ? 'テキスト' : 'バイナリファイル'
+                    }
+                );
+
+            } catch (error) {
+                alert('復号化エラー: ' + error.message + '\n\nパスワードが間違っているか、暗号文が破損している可能性があります。');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // テキストデータかどうかの判定
+        function isPrintableText(text) {
+            // 制御文字の割合をチェック
+            let printableCount = 0;
+            for (let i = 0; i < text.length; i++) {
+                const code = text.charCodeAt(i);
+                if ((code >= 32 && code <= 126) || // ASCII印字可能文字
+                    (code >= 0x3040 && code <= 0x309F) || // ひらがな
+                    (code >= 0x30A0 && code <= 0x30FF) || // カタカナ
+                    (code >= 0x4E00 && code <= 0x9FAF) || // 漢字
+                    code === 10 || code === 13 || code === 9) { // 改行、復帰、タブ
+                    printableCount++;
+                }
+            }
+            return (printableCount / text.length) > 0.8; // 80%以上が印字可能文字
+        }
+
+        // ファイルタイプの推測
+        function detectFileType(bytes) {
+            // マジックナンバーによるファイル判定
+            const header = Array.from(bytes.slice(0, 12)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+            
+            // 画像ファイル
+            if (header.startsWith('FFD8FF')) return 'JPEG画像ファイル';
+            if (header.startsWith('89504E47')) return 'PNG画像ファイル';
+            if (header.startsWith('474946')) return 'GIF画像ファイル';
+            if (header.startsWith('424D')) return 'BMP画像ファイル';
+            if (header.startsWith('52494646') && header.includes('57454250')) return 'WebP画像ファイル';
+            
+            // 音楽・音声ファイル
+            if (header.startsWith('494433')) return 'MP3音楽ファイル (ID3タグ付き)';
+            if (header.startsWith('FFFB') || header.startsWith('FFF3') || header.startsWith('FFF2')) return 'MP3音楽ファイル';
+            if (header.startsWith('52494646') && bytes.length > 8) {
+                const subHeader = Array.from(bytes.slice(8, 12)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+                if (subHeader.startsWith('57415645')) return 'WAV音楽ファイル';
+            }
+            if (header.startsWith('664C6143')) return 'FLAC音楽ファイル';
+            if (header.startsWith('4F676753')) return 'OGG音楽ファイル';
+            
+            // 動画ファイル
+            if (header.startsWith('000000') && (header.includes('667479704D503431') || header.includes('6674797069736F6D'))) return 'MP4動画ファイル';
+            if (header.startsWith('52494646') && header.includes('415649')) return 'AVI動画ファイル';
+            if (header.startsWith('1A45DFA3')) return 'MKV動画ファイル';
+            if (header.startsWith('464C56')) return 'FLV動画ファイル';
+            
+            // 文書ファイル
+            if (header.startsWith('25504446')) return 'PDFファイル';
+            if (header.startsWith('504B0304') || header.startsWith('504B0506')) {
+                // ZIP系ファイルの詳細判定
+                const zipContent = new TextDecoder().decode(bytes.slice(30, 100)).toLowerCase();
+                if (zipContent.includes('word/')) return 'Word文書 (.docx)';
+                if (zipContent.includes('xl/')) return 'Excel文書 (.xlsx)';
+                if (zipContent.includes('ppt/')) return 'PowerPoint文書 (.pptx)';
+                if (zipContent.includes('content.xml')) return 'OpenDocument文書';
+                return 'ZIP圧縮ファイル';
+            }
+            if (header.startsWith('D0CF11E0A1B11AE1')) return 'Microsoft Office文書 (旧形式)';
+            
+            // 実行ファイル
+            if (header.startsWith('4D5A')) return '実行ファイル (EXE/DLL)';
+            if (header.startsWith('7F454C46')) return 'ELF実行ファイル (Linux)';
+            if (header.startsWith('FEEDFACE') || header.startsWith('FEEDFACF')) return 'Mach-O実行ファイル (macOS)';
+            
+            // アーカイブファイル
+            if (header.startsWith('1F8B')) return 'GZIP圧縮ファイル';
+            if (header.startsWith('425A68')) return 'BZIP2圧縮ファイル';
+            if (header.startsWith('377ABCAF271C')) return '7-Zip圧縮ファイル';
+            if (header.startsWith('526172211A0700') || header.startsWith('526172211A070100')) return 'RAR圧縮ファイル';
+            
+            // その他
+            if (bytes[0] === 0x00 && bytes[1] === 0x00 && bytes[2] === 0x01 && bytes[3] === 0x00) return 'アイコンファイル (ICO)';
+            if (header.startsWith('3C3F786D6C') || header.startsWith('3C21444F43545950452048544D4C')) return 'XMLまたはHTMLファイル';
+            if (header.startsWith('CAFEBABE')) return 'Java クラスファイル';
+            
+            return '不明なバイナリファイル';
+        }
+
+        // ファイルダウンロード
+        function downloadResult() {
+            if (!window.decryptedData) {
+                alert('ダウンロード可能なデータがありません');
+                return;
+            }
+
+            try {
+                // ファイル名の生成
+                const downloadBtn = document.getElementById('downloadBtn');
+                const fileType = downloadBtn.getAttribute('data-filetype') || 'file';
+                
+                let extension = 'bin';
+                let filename = 'decrypted';
+                
+                // 拡張子の決定
+                if (fileType.includes('jpeg')) extension = 'jpg';
+                else if (fileType.includes('png')) extension = 'png';
+                else if (fileType.includes('gif')) extension = 'gif';
+                else if (fileType.includes('bmp')) extension = 'bmp';
+                else if (fileType.includes('webp')) extension = 'webp';
+                else if (fileType.includes('pdf')) extension = 'pdf';
+                else if (fileType.includes('mp3')) extension = 'mp3';
+                else if (fileType.includes('wav')) extension = 'wav';
+                else if (fileType.includes('flac')) extension = 'flac';
+                else if (fileType.includes('ogg')) extension = 'ogg';
+                else if (fileType.includes('mp4')) extension = 'mp4';
+                else if (fileType.includes('avi')) extension = 'avi';
+                else if (fileType.includes('mkv')) extension = 'mkv';
+                else if (fileType.includes('flv')) extension = 'flv';
+                else if (fileType.includes('word')) extension = 'docx';
+                else if (fileType.includes('excel')) extension = 'xlsx';
+                else if (fileType.includes('powerpoint')) extension = 'pptx';
+                else if (fileType.includes('zip')) extension = 'zip';
+                else if (fileType.includes('7-zip')) extension = '7z';
+                else if (fileType.includes('rar')) extension = 'rar';
+                else if (fileType.includes('gzip')) extension = 'gz';
+                else if (fileType.includes('exe')) extension = 'exe';
+                else if (fileType.includes('elf')) extension = 'elf';
+                else if (fileType.includes('ico')) extension = 'ico';
+                else if (fileType.includes('xml') || fileType.includes('html')) extension = 'html';
+                else if (fileType.includes('java')) extension = 'class';
+
+                const blob = new Blob([window.decryptedData], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}.${extension}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // ダウンロード完了の表示
+                const originalText = downloadBtn.textContent;
+                downloadBtn.textContent = 'ダウンロード完了';
+                downloadBtn.style.background = '#10b981';
+                
+                setTimeout(() => {
+                    downloadBtn.textContent = originalText;
+                    downloadBtn.style.background = '#f59e0b';
+                }, 2000);
+                
+            } catch (error) {
+                alert('ダウンロードに失敗しました: ' + error.message);
+            }
+        }
+
+        // 結果表示
+        function showResult(title, text, stats) {
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultText').textContent = text;
+
+            const statsElement = document.getElementById('stats');
+            statsElement.innerHTML = '';
+            
+            Object.entries(stats).forEach(([key, value]) => {
+                const statItem = document.createElement('div');
+                statItem.className = 'stat-item';
+                statItem.innerHTML = `
+                    <span class="stat-value">${value}</span>
+                    <div class="stat-label">${key}</div>
+                `;
+                statsElement.appendChild(statItem);
+            });
+
+            document.getElementById('result').classList.add('show');
+        }
+
+        // ローディング表示
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            const buttons = document.querySelectorAll('button');
+            
+            if (show) {
+                loading.classList.add('show');
+                buttons.forEach(btn => btn.disabled = true);
+            } else {
+                loading.classList.remove('show');
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        // 結果コピー
+        function copyResult() {
+            const resultText = document.getElementById('resultText').textContent;
+            
+            navigator.clipboard.writeText(resultText).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const originalText = btn.textContent;
+                
+                btn.textContent = 'コピー完了';
+                btn.classList.add('copied');
+                
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                alert('コピーに失敗しました: ' + err);
+            });
+        }
+
+        // ページ読み込み時の初期化
+        window.addEventListener('load', () => {
+            console.log('AES + 256文字マップ暗号システム準備完了');
+            console.log(`文字マップサイズ: ${CHAR_MAP.byteToChar.length} 文字`);
+            
+            // ファイル選択時の処理
+            document.getElementById('fileInput').addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    document.getElementById('textInput').value = '';
+                }
+            });
+            
+            // テキスト入力時の処理
+            document.getElementById('textInput').addEventListener('input', function() {
+                if (this.value.trim()) {
+                    document.getElementById('fileInput').value = '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
