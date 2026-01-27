@@ -7,13 +7,12 @@ export class RSA {
         if (this.wasmInstance)
             return;
         try {
-            const fs = await import("fs");
-            const path = await import("path");
-            const wasmPath = path.join(__dirname, "../../wasm/bigint.wasm");
-            const wasmBuffer = fs.readFileSync(wasmPath);
+            const response = await fetch("./wasm/bigint.wasm");
+            const wasmBuffer = await response.arrayBuffer();
             const { instance } = await WebAssembly.instantiate(wasmBuffer);
             this.wasmInstance = instance;
             this.wasmMemory = instance.exports.memory;
+            console.log("✅ WASMモジュールをブラウザでロードしました");
         }
         catch {
             const response = await fetch("./wasm/bigint.wasm");
@@ -21,6 +20,7 @@ export class RSA {
             const { instance } = await WebAssembly.instantiate(wasmBuffer);
             this.wasmInstance = instance;
             this.wasmMemory = instance.exports.memory;
+            console.log("✅ WASMモジュールをブラウザでロードしました");
         }
     }
     bigintToWasmLimbs(n, limbs) {
@@ -39,24 +39,31 @@ export class RSA {
     }
     async wasmModExp(base, exp, mod) {
         try {
+            console.log("🔷 WASM modExp使用");
             await this.loadWasm();
             if (!this.wasmInstance || !this.wasmMemory) {
                 return this.montgomeryModExpUltra(base, exp, mod);
             }
             const limbs = Math.ceil(this.bitLength(mod) / 64);
             const view = new BigUint64Array(this.wasmMemory.buffer);
+            // 各値をリムブ配列に変換
             const baseArr = this.bigintToWasmLimbs(base, limbs);
             const expArr = this.bigintToWasmLimbs(exp, limbs);
             const modArr = this.bigintToWasmLimbs(mod, limbs);
+            // メモリ上のポインタ設定（バイト単位でアドレス指定）
             const base_ptr = 0;
             const exp_ptr = limbs;
             const mod_ptr = limbs * 2;
             const result_ptr = limbs * 3;
+            // メモリへセット
             view.set(baseArr, base_ptr);
             view.set(expArr, exp_ptr);
             view.set(modArr, mod_ptr);
-            const modExpMontgomery = this.wasmInstance.exports.modExpMontgomery;
-            modExpMontgomery(base_ptr * 8, exp_ptr * 8, mod_ptr * 8, result_ptr * 8, limbs);
+            // wasm の modExp を呼ぶ（ポインタはバイトオフセット）
+            const modExp = this.wasmInstance.exports.modExp;
+            // 引数: すべてバイト単位のポインタ
+            modExp(base_ptr * 8, exp_ptr * 8, mod_ptr * 8, result_ptr * 8, limbs);
+            // 結果を取得
             const resultArr = view.slice(result_ptr, result_ptr + limbs);
             return this.wasmLimbsToBigint(resultArr, limbs);
         }
@@ -715,11 +722,11 @@ export class RSA {
         if (exp < 100000n) {
             return this.binaryModExpOptimized(base, exp, mod);
         }
+        // 通常はwasm（フォールバック付き）
         try {
-            return await this.wasmModExp(base, exp, mod);
+            return this.montgomeryModExpUltra(base, exp, mod);
         }
         catch (error) {
-            console.warn("⚠️ WASM使用失敗、JS実装で続行:", error);
             return this.montgomeryModExpUltra(base, exp, mod);
         }
     }
