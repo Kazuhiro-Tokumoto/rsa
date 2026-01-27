@@ -12,7 +12,7 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
 
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
     "noEmit": false,              /* 【重要】Viteがビルドするのでtscはファイルを出さない */
     "allowImportingTsExtensions": false, /* .ts を直接 import している場合のエラー防止 */

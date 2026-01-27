@@ -1,5 +1,5 @@
 import { RSA } from "./mojyu-ru/rsa.js";
-import { test } from "wasm/test-wasm.js";
+import { test } from "../wasm/test-wasm.js";
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.textContent = message;
@@ -98,7 +98,7 @@ function showToast(message, type = 'success') {
 // ============================================================
 // メイン関数
 // ============================================================
-test(); // WASMテストの実行
+await test(); // WASMテストの実行
 export async function main() {
     // 既存のRSAアプリを削除（二重実行防止）
     const existingApp = document.getElementById('rsa-app');

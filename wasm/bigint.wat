@@ -782,9 +782,24 @@
   )
   
   ;; ===== モンゴメリ modExp（偶数対応版）=====
-;; ===== モンゴメリ modExp（修正版）=====
+(func $copy (param $dst i32) (param $src i32) (param $limbs i32)
+  (local $i i32)
+  (local.set $i (i32.const 0))
+  (block $break
+    (loop $continue
+      (br_if $break (i32.ge_u (local.get $i) (local.get $limbs)))
+      (i64.store
+        (i32.add (local.get $dst) (i32.shl (local.get $i) (i32.const 3)))
+        (i64.load (i32.add (local.get $src) (i32.shl (local.get $i) (i32.const 3))))
+      )
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (br $continue)
+    )
+  )
+)
 (func $modExpMontgomery (param $base_ptr i32) (param $exp_ptr i32) (param $mod_ptr i32) (param $result_ptr i32) (param $limbs i32)
   (local $i i32)
+  (local $j i32)
   (local $bit_pos i32)
   (local $total_bits i32)
   (local $n_prime i64)
@@ -796,6 +811,18 @@
   (local $temp2_ptr i32)
   (local $limb_idx i32)
   (local $bit_mask i64)
+  (local $bit i32)
+  
+  ;; スライディングウィンドウ用変数
+  (local $k i32)              ;; ウィンドウサイズ
+  (local $table_size i32)     ;; テーブルサイズ = 2^(k-1)
+  (local $table_ptr i32)      ;; プリコンピュートテーブルのベースアドレス
+  (local $base_squared_ptr i32) ;; base^2 用
+  (local $win_size i32)       ;; 現在のウィンドウサイズ
+  (local $win_val i32)        ;; ウィンドウ値
+  (local $max_win_size i32)   ;; 最大ウィンドウサイズ
+  (local $s i32)              ;; ループカウンタ
+  (local $table_idx i32)      ;; テーブルインデックス
   
   ;; N[0] が偶数かチェック
   (local.set $n0 (i64.load (local.get $mod_ptr)))
@@ -813,6 +840,12 @@
   (local.set $mont_result_ptr (i32.const 150000))
   (local.set $temp1_ptr (i32.const 160000))
   (local.set $temp2_ptr (i32.const 170000))
+  (local.set $base_squared_ptr (i32.const 180000))
+  (local.set $table_ptr (i32.const 200000))  ;; テーブル用メモリ領域
+  
+  ;; ウィンドウサイズを決定 (k = 5)
+  (local.set $k (i32.const 5))
+  (local.set $table_size (i32.shl (i32.const 1) (i32.sub (local.get $k) (i32.const 1))))  ;; 2^(k-1) = 16
   
   ;; n_prime を計算
   (local.set $n_prime (call $computeNPrime (local.get $mod_ptr)))
@@ -824,8 +857,53 @@
   (call $mul (local.get $base_ptr) (local.get $r2_ptr) (local.get $temp1_ptr) (local.get $limbs) (local.get $limbs))
   (call $montgomeryReduce (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $mont_base_ptr) (local.get $limbs) (local.get $n_prime))
   
+  ;; base_squared = mont_base^2
+  (call $mul (local.get $mont_base_ptr) (local.get $mont_base_ptr) (local.get $temp1_ptr) (local.get $limbs) (local.get $limbs))
+  (call $montgomeryReduce (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $base_squared_ptr) (local.get $limbs) (local.get $n_prime))
+  
+  ;; プリコンピュートテーブル作成
+  ;; table[0] = mont_base
+  (call $copy 
+    (local.get $table_ptr) 
+    (local.get $mont_base_ptr) 
+    (local.get $limbs)
+  )
+  
+  ;; table[i] = table[i-1] * base_squared (for i = 1 to table_size-1)
+  (local.set $i (i32.const 1))
+  (block $table_break
+    (loop $table_loop
+      (br_if $table_break (i32.ge_u (local.get $i) (local.get $table_size)))
+      
+      ;; table[i] = table[i-1] * base_squared
+      (call $mul 
+        (i32.add 
+          (local.get $table_ptr) 
+          (i32.mul (i32.mul (i32.sub (local.get $i) (i32.const 1)) (local.get $limbs)) (i32.const 8))
+        )
+        (local.get $base_squared_ptr)
+        (local.get $temp1_ptr)
+        (local.get $limbs)
+        (local.get $limbs)
+      )
+      
+      (call $montgomeryReduce 
+        (local.get $temp1_ptr) 
+        (local.get $mod_ptr) 
+        (i32.add 
+          (local.get $table_ptr) 
+          (i32.mul (i32.mul (local.get $i) (local.get $limbs)) (i32.const 8))
+        )
+        (local.get $limbs) 
+        (local.get $n_prime)
+      )
+      
+      (local.set $i (i32.add (local.get $i) (i32.const 1)))
+      (br $table_loop)
+    )
+  )
+  
   ;; mont_result = R mod N（Montgomery形式の1）
-  ;; これは単に temp1_ptr に R を設定してから mod で割るだけ
   (local.set $i (i32.const 0))
   (block $init_r_break
     (loop $init_r_loop
@@ -844,44 +922,170 @@
   
   (call $mod (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $mont_result_ptr) (i32.mul (local.get $limbs) (i32.const 2)) (local.get $limbs))
   
-  ;; 各ビットを処理
-  (local.set $total_bits (i32.mul (local.get $limbs) (i32.const 64)))
-  (local.set $bit_pos (i32.const 0))
+  ;; ビット長を計算（最上位の非ゼロビットを探す）
+  (local.set $total_bits (i32.const 0))
+  (local.set $i (local.get $limbs))
   
-  (block $outer_break
-    (loop $outer_loop
-      (br_if $outer_break (i32.ge_u (local.get $bit_pos) (local.get $total_bits)))
+  (block $find_bits_break
+    (loop $find_bits_loop
+      (br_if $find_bits_break (i32.eqz (local.get $i)))
+      (local.set $i (i32.sub (local.get $i) (i32.const 1)))
       
+      (if (i64.ne 
+            (i64.load (i32.add (local.get $exp_ptr) (i32.mul (local.get $i) (i32.const 8))))
+            (i64.const 0)
+          )
+        (then
+          ;; この limb にビットがある
+          (local.set $total_bits 
+            (i32.add 
+              (i32.mul (i32.add (local.get $i) (i32.const 1)) (i32.const 64))
+              (i32.const 0)
+            )
+          )
+          (br $find_bits_break)
+        )
+      )
+      
+      (br $find_bits_loop)
+    )
+  )
+  
+  (if (i32.eqz (local.get $total_bits))
+    (then
+      ;; 指数が0の場合、結果は1
+      (return)
+    )
+  )
+  
+  ;; スライディングウィンドウによるべき乗計算（右から左へ）
+  (local.set $bit_pos (i32.sub (local.get $total_bits) (i32.const 1)))
+  
+  (block $window_outer_break
+    (loop $window_outer_loop
+      (br_if $window_outer_break (i32.lt_s (local.get $bit_pos) (i32.const 0)))
+      
+      ;; 現在のビットを取得
       (local.set $limb_idx (i32.div_u (local.get $bit_pos) (i32.const 64)))
       (local.set $bit_mask 
         (i64.shl (i64.const 1) (i64.and (i64.extend_i32_u (local.get $bit_pos)) (i64.const 63)))
       )
       
-      (if (i64.ne
+      (local.set $bit
+        (if (result i32)
+          (i64.ne
             (i64.and
               (i64.load (i32.add (local.get $exp_ptr) (i32.mul (local.get $limb_idx) (i32.const 8))))
               (local.get $bit_mask)
             )
             (i64.const 0)
           )
-        (then
-          (call $mul (local.get $mont_result_ptr) (local.get $mont_base_ptr) (local.get $temp1_ptr) (local.get $limbs) (local.get $limbs))
-          (call $montgomeryReduce (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $mont_result_ptr) (local.get $limbs) (local.get $n_prime))
+          (then (i32.const 1))
+          (else (i32.const 0))
         )
       )
       
-      (call $mul (local.get $mont_base_ptr) (local.get $mont_base_ptr) (local.get $temp1_ptr) (local.get $limbs) (local.get $limbs))
-      (call $montgomeryReduce (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $mont_base_ptr) (local.get $limbs) (local.get $n_prime))
+      (if (i32.eqz (local.get $bit))
+        (then
+          ;; ビットが0の場合: result = result^2
+          (call $mul (local.get $mont_result_ptr) (local.get $mont_result_ptr) (local.get $temp1_ptr) (local.get $limbs) (local.get $limbs))
+          (call $montgomeryReduce (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $mont_result_ptr) (local.get $limbs) (local.get $n_prime))
+          (local.set $bit_pos (i32.sub (local.get $bit_pos) (i32.const 1)))
+        )
+        (else
+          ;; ビットが1の場合: ウィンドウを読み取る
+          (local.set $win_size (i32.const 1))
+          (local.set $win_val (i32.const 1))
+          (local.set $max_win_size 
+            (if (result i32) (i32.lt_s (i32.add (local.get $bit_pos) (i32.const 1)) (local.get $k))
+              (then (i32.add (local.get $bit_pos) (i32.const 1)))
+              (else (local.get $k))
+            )
+          )
+          
+          ;; ウィンドウを読み取る
+          (local.set $j (i32.const 1))
+          (block $read_window_break
+            (loop $read_window_loop
+              (br_if $read_window_break (i32.ge_u (local.get $j) (local.get $max_win_size)))
+              
+              (local.set $limb_idx (i32.div_u (i32.sub (local.get $bit_pos) (local.get $j)) (i32.const 64)))
+              (local.set $bit_mask 
+                (i64.shl (i64.const 1) (i64.and (i64.extend_i32_u (i32.sub (local.get $bit_pos) (local.get $j))) (i64.const 63)))
+              )
+              
+              (local.set $bit
+                (if (result i32)
+                  (i64.ne
+                    (i64.and
+                      (i64.load (i32.add (local.get $exp_ptr) (i32.mul (local.get $limb_idx) (i32.const 8))))
+                      (local.get $bit_mask)
+                    )
+                    (i64.const 0)
+                  )
+                  (then (i32.const 1))
+                  (else (i32.const 0))
+                )
+              )
+              
+              (local.set $win_val (i32.or (i32.shl (local.get $win_val) (i32.const 1)) (local.get $bit)))
+              (local.set $win_size (i32.add (local.get $j) (i32.const 1)))
+              
+              (local.set $j (i32.add (local.get $j) (i32.const 1)))
+              (br $read_window_loop)
+            )
+          )
+          
+          ;; ウィンドウが奇数になるまで縮小
+          (block $shrink_window_break
+            (loop $shrink_window_loop
+              (br_if $shrink_window_break (i32.le_u (local.get $win_size) (i32.const 1)))
+              (br_if $shrink_window_break (i32.eq (i32.and (local.get $win_val) (i32.const 1)) (i32.const 1)))
+              
+              (local.set $win_val (i32.shr_u (local.get $win_val) (i32.const 1)))
+              (local.set $win_size (i32.sub (local.get $win_size) (i32.const 1)))
+              (br $shrink_window_loop)
+            )
+          )
+          
+          ;; win_size 回 2乗
+          (local.set $s (i32.const 0))
+          (block $square_break
+            (loop $square_loop
+              (br_if $square_break (i32.ge_u (local.get $s) (local.get $win_size)))
+              
+              (call $mul (local.get $mont_result_ptr) (local.get $mont_result_ptr) (local.get $temp1_ptr) (local.get $limbs) (local.get $limbs))
+              (call $montgomeryReduce (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $mont_result_ptr) (local.get $limbs) (local.get $n_prime))
+              
+              (local.set $s (i32.add (local.get $s) (i32.const 1)))
+              (br $square_loop)
+            )
+          )
+          
+          ;; result = result * table[win_val >> 1]
+          (local.set $table_idx (i32.shr_u (local.get $win_val) (i32.const 1)))
+          
+          (call $mul 
+            (local.get $mont_result_ptr)
+            (i32.add 
+              (local.get $table_ptr) 
+              (i32.mul (i32.mul (local.get $table_idx) (local.get $limbs)) (i32.const 8))
+            )
+            (local.get $temp1_ptr)
+            (local.get $limbs)
+            (local.get $limbs)
+          )
+          (call $montgomeryReduce (local.get $temp1_ptr) (local.get $mod_ptr) (local.get $mont_result_ptr) (local.get $limbs) (local.get $n_prime))
+          
+          (local.set $bit_pos (i32.sub (local.get $bit_pos) (local.get $win_size)))
+        )
+      )
       
-      (local.set $bit_pos (i32.add (local.get $bit_pos) (i32.const 1)))
-      (br $outer_loop)
+      (br $window_outer_loop)
     )
   )
   
-  ;; 🔧 修正: モンゴメリ形式から通常形式に戻す
-  ;; mont_result * 1 を Montgomery Reduction する（つまり mont_result * R^-1 mod N）
-  
-  ;; temp2_ptr に mont_result を拡張コピー（下位 limbs のみ、上位は0）
+  ;; モンゴメリ形式から通常形式に戻す
   (local.set $i (i32.const 0))
   (block $final_copy_break
     (loop $final_copy_loop
