@@ -194,7 +194,7 @@ function generateLargePrime(bits: number): bigint {
         const p = pBase + BigInt(k * 2);
         if ((p - 1n) % e !== 0n) {
           if (isProbablyPrime(p, 1)) { // 1回だけ判定
-            if (isProbablyPrime(p, 12)) return p; // 通れば確定
+            if (isProbablyPrime(p, 5)) return p; // 通れば確定
           }
         }
       }

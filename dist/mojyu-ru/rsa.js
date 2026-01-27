@@ -610,81 +610,91 @@ export class RSA {
     binaryModExpOptimized(base, exp, mod) {
         if (mod === 1n)
             return 0n;
-        let b = base % mod;
-        if (b === 0n)
-            return 0n;
-        let res = 1n;
-        let e = exp;
+        let result = 1n, b = base % mod, e = exp;
         while (e > 0n) {
-            if (e & 1n) {
-                res = (res * b) % mod;
-            }
-            e >>= 1n;
-            if (e === 0n)
-                break;
+            if ((e & 1n) !== 0n)
+                result = (result * b) % mod;
             b = (b * b) % mod;
+            e >>= 1n;
         }
-        return res;
+        return result;
     }
+    montgomeryTableCache = new Map();
     montgomeryModExpUltra(base, exp, mod) {
-        const modBits = this.bitLength(mod);
-        const modBitsShift = BigInt(modBits);
-        const R = 1n << modBitsShift;
-        const mask = R - 1n;
-        // 🔧 修正: Newton法でN'を計算（N' * N ≡ -1 (mod R)）
-        // まず N^-1 mod 2^64 を計算してから拡張
-        let nPrime = mod & mask;
-        // Newton反復: x_{i+1} = x_i * (2 - N * x_i) mod R
-        // これで N * x ≡ 1 (mod R) となるxを求める
-        for (let i = 0; i < Math.ceil(modBits / 64); i++) {
-            nPrime = (nPrime * (2n - ((mod * nPrime) & mask))) & mask;
+        const bitLength = (n) => n.toString(2).length;
+        const modBits = bitLength(mod);
+        // より最適なウィンドウサイズ決定
+        let k = 13;
+        if (modBits >= 4096) {
+            k = 8;
         }
-        // N' = -N^-1 mod R
-        nPrime = (R - nPrime) & mask;
-        const k = 6;
-        const tableSize = 1 << (k - 1);
-        const table = new Array(tableSize);
-        // baseをMontgomery形式に変換: baseBar = base * R mod N
-        const baseBar = (base << modBitsShift) % mod;
-        const reduceFast = (T) => {
+        else if (modBits >= 2048) {
+            k = 7;
+        }
+        // -- キャッシュキー: base, mod, wsizeで一意 --
+        const cacheKey = `${base}_${mod}_${k}`;
+        let params = this.montgomeryTableCache.get(cacheKey);
+        if (!params) {
+            const wsize = k;
+            const numOdd = 1 << (wsize - 1);
+            const R = 1n << BigInt(modBits);
+            const mask = R - 1n;
+            // nPrime計算
+            let nPrime = mod & mask;
+            for (let i = 0; i < Math.ceil(modBits / 64); i++) {
+                nPrime = (nPrime * (2n - ((mod * nPrime) & mask))) & mask;
+            }
+            nPrime = (R - nPrime) & mask;
+            // Montgomery reduction
+            const montReduce = (T) => {
+                const u = ((T & mask) * nPrime) & mask;
+                const x = (T + u * mod) >> BigInt(modBits);
+                return x >= mod ? x - mod : x;
+            };
+            // テーブル生成
+            const baseBar = (base << BigInt(modBits)) % mod;
+            const baseBar2 = montReduce(baseBar * baseBar);
+            const table = new Array(numOdd);
+            table[0] = baseBar;
+            for (let i = 1; i < numOdd; i++) {
+                table[i] = montReduce(table[i - 1] * baseBar2);
+            }
+            params = {
+                modBits, wsize, R, mask, nPrime, baseBar, baseBar2, table,
+            };
+            this.montgomeryTableCache.set(cacheKey, params);
+        }
+        // Montgomery reduction (キャッシュから再生)
+        const montReduce = (T) => {
+            const { mask, nPrime, modBits } = params;
             const u = ((T & mask) * nPrime) & mask;
-            const x = (T + u * mod) >> modBitsShift;
+            const x = (T + u * mod) >> BigInt(modBits);
             return x >= mod ? x - mod : x;
         };
-        const baseBar2 = reduceFast(baseBar * baseBar);
-        table[0] = baseBar;
-        for (let i = 1; i < tableSize; i++) {
-            table[i] = reduceFast(table[i - 1] * baseBar2);
-        }
-        let res = (1n << modBitsShift) % mod;
-        const expBits = this.bitLength(exp);
-        let bitPos = expBits - 1;
-        while (bitPos >= 0) {
-            const bit = (exp >> BigInt(bitPos)) & 1n;
-            if (!bit) {
-                res = reduceFast(res * res);
-                bitPos--;
+        // -- Montgomery法通常べき乗部 --
+        // expのbit列をstring化
+        const expBin = exp.toString(2);
+        let res = (1n << BigInt(params.modBits)) % mod; // Montgomery形式の1
+        for (let i = 0; i < expBin.length;) {
+            if (expBin[i] === '0') {
+                res = montReduce(res * res);
+                i++;
+                continue;
             }
-            else {
-                let winSize = 1;
-                let winVal = 1n;
-                const maxWinSize = Math.min(k, bitPos + 1);
-                for (let j = 1; j < maxWinSize; j++) {
-                    winVal = (winVal << 1n) | ((exp >> BigInt(bitPos - j)) & 1n);
-                    winSize = j + 1;
-                }
-                while (winSize > 1 && !(winVal & 1n)) {
-                    winVal >>= 1n;
-                    winSize--;
-                }
-                for (let s = 0; s < winSize; s++) {
-                    res = reduceFast(res * res);
-                }
-                res = reduceFast(res * table[Number(winVal >> 1n)]);
-                bitPos -= winSize;
+            let winLen = Math.min(params.wsize, expBin.length - i);
+            while (winLen > 1 && expBin[i + winLen - 1] === '0') {
+                winLen--;
             }
+            const winVal = parseInt(expBin.slice(i, i + winLen), 2);
+            for (let j = 0; j < winLen; j++) {
+                res = montReduce(res * res);
+            }
+            if (winVal > 0) {
+                res = montReduce(res * params.table[(winVal - 1) >> 1]);
+            }
+            i += winLen;
         }
-        return reduceFast(res);
+        return montReduce(res);
     }
     modExp(base, exp, mod) {
         if (exp === 65537n) {
