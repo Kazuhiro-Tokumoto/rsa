@@ -52,10 +52,37 @@ function bigintToUint8Array(n: bigint, size?: number): Uint8Array {
   }
   return u8;
 }
+function modExp65537(base: bigint, mod: bigint): bigint {
+    if (mod === 1n) return 0n;
 
+    let r = base % mod;
+    if (r === 0n) return 0n;
+
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+    r = (r * r) % mod;
+
+    return (r * (base % mod)) % mod;
+  }
 // ===== Montgomery modExp =====
 
 function modExp(base: bigint, exp: bigint, mod: bigint): bigint {
+  if (exp === 65537n) {
+    return modExp65537(base, mod);
+  }
   let k = 5;
   const bits = bitLength(mod);
   if (bits > 2048) k = 7;
