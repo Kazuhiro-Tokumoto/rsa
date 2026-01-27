@@ -915,11 +915,33 @@ private montgomeryModExpUltra(
   const modBits = bitLength(mod);
 
   // より最適なウィンドウサイズ決定
-  let k = 13;
-  if (modBits >= 4096) {
+  let k: number;
+  if(modBits >= 131072) {
+    k = 13;
+  } else if (modBits >= 65536) {
+    k = 12;
+  } else if (modBits >= 32768) {
+    k = 11;
+  } else if (modBits >= 16384) {
+    k = 10;
+  } else if (modBits >= 8192) {
+    k = 9;
+  } else if (modBits >= 4096) {
     k = 8;
   } else if (modBits >= 2048) {
     k = 7;
+  }else if (modBits >= 1024) {
+    k = 6;
+  } else if (modBits >= 512) {
+    k = 5;
+  } else if (modBits >= 256) {
+    k = 4;
+  } else if (modBits >= 128) {
+    k = 3;
+  } else if (modBits >= 64) {
+    k = 2;
+  } else {
+    k = 1;
   }
 
   // -- キャッシュキー: base, mod, wsizeで一意 --
