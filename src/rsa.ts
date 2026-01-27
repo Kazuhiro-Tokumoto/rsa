@@ -1,8 +1,4 @@
-import { inmuData, privacyWords } from "./inmu.js";
 import { RSA } from "./mojyu-ru/rsa.js";
-import { isinmu } from "./mojyu-ru/inmu.js";
-import { createHeader } from "./header.js";
-import {test} from "../wasm/test-wasm.js";
 
 function showToast(message: string, type: 'success' | 'error' | 'info' = 'success'): void {
   const toast = document.createElement('div');
@@ -112,7 +108,6 @@ function showToast(message: string, type: 'success' | 'error' | 'info' = 'succes
 // ============================================================
 // メイン関数
 // ============================================================
-await test(); // WASMテストの実行
 export async function main(): Promise<void> {
   // 既存のRSAアプリを削除（二重実行防止）
   const existingApp = document.getElementById('rsa-app');

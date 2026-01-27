@@ -1024,15 +1024,13 @@ export class RSA {
       const b = base % mod;
       return (((b * b) % mod) * b) % mod;
     }
-
-    if (exp < 100000n) {
+              if (exp < 100000n) {
       return this.binaryModExpOptimized(base, exp, mod);
-    }
-
+      }
     try {
       return await this.wasmModExp(base, exp, mod);
     } catch (error) {
-      console.warn("⚠️ WASM使用失敗、JS実装で続行:", error);
+            console.warn("⚠️ WASM使用失敗、JS実装で続行:", error);
       return this.montgomeryModExpUltra(base, exp, mod);
     }
   }
