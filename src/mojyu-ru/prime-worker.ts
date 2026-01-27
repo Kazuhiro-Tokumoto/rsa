@@ -159,9 +159,9 @@ function generateLargePrime(bits: number): bigint {
   const min = 1n << BigInt(bits - 1);
   const e = 65537n;
   const stepSize = 2000; // 一度にチェックする範囲
-
+  const sieve = new Uint32Array(Math.ceil(stepSize / 32));
   while (true) {
-    let pBase = bytesToBigInt(globalThis.crypto.getRandomValues(new Uint8Array(bits / 8))) | 1n | min;
+   let pBase = bytesToBigInt(globalThis.crypto.getRandomValues(new Uint8Array(bits / 8))) | 1n | min;
 
     // 1万個の素数に対する「初期の剰余」を計算
     const initialRems = new Int32Array(smallPrimesBI.length);
@@ -170,7 +170,6 @@ function generateLargePrime(bits: number): bigint {
     }
 
     // ビットマップ作成 (2000ビット = 32bit型 × 63要素)
-    const sieve = new Uint32Array(Math.ceil(stepSize / 32));
     sieve.fill(0xFFFFFFFF); // 最初は全部「素数候補(1)」
 
     // 1万個の素数で一気にふるいにかける
