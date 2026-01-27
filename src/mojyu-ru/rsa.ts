@@ -578,8 +578,8 @@ private async wasmModExp(
       const cp = c % p;
       const cq = c % q;
 
-      const m1 = this.binaryModExpOptimized(cp, dp, p);
-      const m2 = this.binaryModExpOptimized(cq, dq, q);
+      const m1 = await this.modExpAsync(cp, dp, p);
+      const m2 = await this.modExpAsync(cq, dq, q);
 
       // 負数対策
       let diff = (((m1 - m2) % p) + p) % p;
