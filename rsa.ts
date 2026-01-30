@@ -735,8 +735,9 @@ export class RSA {
 }> { 
     const e = 65537n;
     const half = bits / 2;
-
+    console.log("Generating prime p...");
     const p = this.generateLargePrime(half);
+    console.log("Generating prime q...");
     const q = this.generateLargePrime(half);
 
     if (p === q) {
