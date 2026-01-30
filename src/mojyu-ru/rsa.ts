@@ -1162,13 +1162,22 @@ private modExpAsync(
 
     const bigOnes = integers.filter((v) => v > 0n);
 
-    return {
-      n: bigOnes[0],
-      e: bigOnes[1],
-      d: bigOnes[2],
-      p: bigOnes[3],
-      q: bigOnes[4],
-    };
+   return {
+  n: integers[1],
+  e: integers[2], // ← 救出！
+  d: integers[3], // ← 救出！
+  p: integers[4],
+  q: integers[5],
+  dp: integers[6],
+  dq: integers[7],
+  qInv: integers[8],
+
+  // バレット定数
+  muN: (1n << (BigInt(this.bitLength(integers[1])) * 2n)) / integers[1],
+  muP: (1n << (BigInt(this.bitLength(integers[4])) * 2n)) / integers[4],
+  muQ: (1n << (BigInt(this.bitLength(integers[5])) * 2n)) / integers[5]
+};
+
   }
 
   private parseOpenSSH(pem: string) {
