@@ -1,5 +1,5 @@
 // src/mojyu-ru/decrypt-worker.ts
-
+//@ts-nocheck
 // ===== ユーティリティ関数 =====
 
 function bytesToBigInt(bytes: Uint8Array): bigint {
@@ -52,74 +52,187 @@ function bigintToUint8Array(n: bigint, size?: number): Uint8Array {
   return u8;
 }
 
-// ===== Montgomery modExp =====
+// ===== バレット還元 =====
 
-function modExp(base: bigint, exp: bigint, mod: bigint): bigint {
-  let k = 5;
-  const bits = bitLength(mod);
-  if (bits > 2048) k = 7;
-  else if (bits > 1024) k = 6;
+function barrettReduce(
+  x: bigint,
+  mod: bigint,
+  mu: bigint,
+  shift: bigint,
+): bigint {
+  const q = (x * mu) >> shift;
+  let r = x - q * mod;
 
-  const modBits = BigInt(bits);
-  const R = 1n << modBits;
-  const mask = R - 1n;
-
-  let t = 0n, newT = 1n, r = R, m = mod;
-  while (m !== 0n) {
-    const q = r / m;
-    [t, newT] = [newT, t - q * newT];
-    [r, m] = [m, r - q * m];
+  while (r >= mod) {
+    r -= mod;
   }
-  const nPrime = (R - (t < 0n ? t + R : t)) & mask;
+  while (r < 0n) {
+    r += mod;
+  }
 
-  const reduce = (T: bigint): bigint => {
+  return r;
+}
+
+// ===== Montgomery modExp（バレット還元統合版） =====
+
+const montgomeryTableCache = new Map<
+  string,
+  {
+    modBits: number;
+    wsize: number;
+    R: bigint;
+    mask: bigint;
+    nPrime: bigint;
+    baseBar: bigint;
+    baseBar2: bigint;
+    table: bigint[];
+  }
+>();
+
+function montgomeryModExpUltra(
+  base: bigint,
+  exp: bigint,
+  mod: bigint,
+  mu: bigint,
+  shift: bigint,
+): bigint {
+  const modBits = bitLength(mod);
+
+  let k: number;
+  if (modBits >= 131072) {
+    k = 13;
+  } else if (modBits >= 65536) {
+    k = 12;
+  } else if (modBits >= 32768) {
+    k = 11;
+  } else if (modBits >= 16384) {
+    k = 10;
+  } else if (modBits >= 8192) {
+    k = 9;
+  } else if (modBits >= 4096) {
+    k = 8;
+  } else if (modBits >= 2048) {
+    k = 7;
+  } else if (modBits >= 1024) {
+    k = 6;
+  } else if (modBits >= 512) {
+    k = 5;
+  } else if (modBits >= 256) {
+    k = 4;
+  } else if (modBits >= 128) {
+    k = 3;
+  } else if (modBits >= 64) {
+    k = 2;
+  } else {
+    k = 1;
+  }
+
+  const cacheKey = `${base}_${mod}_${k}`;
+  let params = montgomeryTableCache.get(cacheKey);
+
+  if (!params) {
+    const wsize = k;
+    const numOdd = 1 << (wsize - 1);
+
+    const R = 1n << BigInt(modBits);
+    const mask = R - 1n;
+
+    let nPrime = mod & mask;
+    for (let i = 0; i < Math.ceil(modBits / 64); i++) {
+      nPrime = (nPrime * (2n - ((mod * nPrime) & mask))) & mask;
+    }
+    nPrime = (R - nPrime) & mask;
+
+    const montReduce = (T: bigint): bigint => {
+      const u = ((T & mask) * nPrime) & mask;
+      const x = (T + u * mod) >> BigInt(modBits);
+      return x >= mod ? x - mod : x;
+    };
+
+    // バレット還元を使ってMontgomery形式に変換
+    const baseBar = barrettReduce(base << BigInt(modBits), mod, mu, shift);
+    const baseBar2 = montReduce(baseBar * baseBar);
+    const table = new Array<bigint>(numOdd);
+    table[0] = baseBar;
+    for (let i = 1; i < numOdd; i++) {
+      table[i] = montReduce(table[i - 1] * baseBar2);
+    }
+
+    params = {
+      modBits,
+      wsize,
+      R,
+      mask,
+      nPrime,
+      baseBar,
+      baseBar2,
+      table,
+    };
+    montgomeryTableCache.set(cacheKey, params);
+  }
+
+  const montReduce = (T: bigint): bigint => {
+    const { mask, nPrime, modBits } = params!;
     const u = ((T & mask) * nPrime) & mask;
-    const x = (T + u * mod) >> modBits;
+    const x = (T + u * mod) >> BigInt(modBits);
     return x >= mod ? x - mod : x;
   };
 
-  const tableSize = 1 << (k - 1);
-  const table = new Array<bigint>(tableSize);
-  const baseBar = (base << modBits) % mod;
-  const baseBar2 = reduce(baseBar * baseBar);
+  const expBin = exp.toString(2);
+  let res = barrettReduce(1n << BigInt(params!.modBits), mod, mu, shift);
 
-  table[0] = baseBar;
-  for (let i = 1; i < tableSize; i++) {
-    table[i] = reduce(table[i - 1] * baseBar2);
-  }
-
-  let res = (1n << modBits) % mod;
-  let bitPos = bitLength(exp) - 1;
-
-  while (bitPos >= 0) {
-    const bit = (exp >> BigInt(bitPos)) & 1n;
-    if (!bit) {
-      res = reduce(res * res);
-      bitPos--;
-    } else {
-      let winSize = 1;
-      let winVal = 1n;
-      const maxWinSize = Math.min(k, bitPos + 1);
-      for (let j = 1; j < maxWinSize; j++) {
-        winVal = (winVal << 1n) | ((exp >> BigInt(bitPos - j)) & 1n);
-        winSize = j + 1;
-      }
-      while (winSize > 1 && !(winVal & 1n)) {
-        winVal >>= 1n;
-        winSize--;
-      }
-      for (let s = 0; s < winSize; s++) res = reduce(res * res);
-      res = reduce(res * table[Number(winVal >> 1n)]);
-      bitPos -= winSize;
+  for (let i = 0; i < expBin.length; ) {
+    if (expBin[i] === "0") {
+      res = montReduce(res * res);
+      i++;
+      continue;
     }
+    let winLen = Math.min(params!.wsize, expBin.length - i);
+    while (winLen > 1 && expBin[i + winLen - 1] === "0") {
+      winLen--;
+    }
+    const winVal = parseInt(expBin.slice(i, i + winLen), 2);
+    for (let j = 0; j < winLen; j++) {
+      res = montReduce(res * res);
+    }
+    if (winVal > 0) {
+      res = montReduce(res * params!.table[(winVal - 1) >> 1]);
+    }
+    i += winLen;
   }
-  return reduce(res);
+  return montReduce(res);
+}
+
+// ===== modExp統合 =====
+
+function modExp(
+  base: bigint,
+  exp: bigint,
+  mod: bigint,
+  mu: bigint,
+  shift: bigint,
+): bigint {
+  if (base < 0n || exp < 0n || mod <= 0n) {
+    throw new Error("modExp: 不正な入力値");
+  }
+
+  base = barrettReduce(base, mod, mu, shift);
+  if (base < 0n) base += mod;
+
+  if (exp === 0n) return 1n;
+  if (base === 0n) return 0n;
+  if (mod === 1n) return 0n;
+
+  return montgomeryModExpUltra(base, exp, mod, mu, shift);
 }
 
 // ===== SHA-256 =====
 
 async function sha256(data: Uint8Array): Promise<Uint8Array> {
-  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data.buffer as ArrayBuffer);
+  const hashBuffer = await globalThis.crypto.subtle.digest(
+    "SHA-256",
+    data.buffer as ArrayBuffer,
+  );
   return new Uint8Array(hashBuffer);
 }
 
@@ -158,6 +271,13 @@ async function mgf1(seed: Uint8Array, maskLen: number): Promise<Uint8Array> {
   return result;
 }
 
+// src/mojyu-ru/decrypt-worker.ts
+//@ts-nocheck
+
+// ... [既存のユーティリティ関数・modExp関数は同じ] ...
+
+// ===== OAEP Unpad =====
+
 async function oeapUnpad(
   em: Uint8Array,
   k: number,
@@ -166,11 +286,10 @@ async function oeapUnpad(
   const hLen = 32;
 
   if (em.length !== k || k < 2 * hLen + 2) {
-    throw new Error('復号エラー: 不正なパディング');
+    throw new Error("復号エラー: 不正なパディング");
   }
 
   const lHash = await sha256(label);
-
   const y = em[0];
   const maskedSeed = em.subarray(1, 1 + hLen);
   const maskedDB = em.subarray(1 + hLen);
@@ -197,16 +316,146 @@ async function oeapUnpad(
       separatorIndex = i;
       break;
     } else if (db[i] !== 0x00) {
-      throw new Error('復号エラー: 不正なパディング構造');
+      throw new Error("復号エラー: 不正なパディング構造");
     }
   }
 
   if (y !== 0x00 || !lHashMatch || separatorIndex === -1) {
-    throw new Error('復号エラー: パディング検証失敗');
+    throw new Error("復号エラー: パディング検証失敗");
   }
 
   return db.subarray(separatorIndex + 1);
 }
+
+// ===== Worker Message Handler =====
+
+self.onmessage = async (e: MessageEvent) => {
+  try {
+    const {
+      chunks,
+      d: dStr,
+      p: pStr,
+      q: qStr,
+      dp: dpStr,
+      dq: dqStr,
+      qInv: qInvStr,
+      muP: muPStr,
+      muQ: muQStr,
+      muN: muNStr,
+      pShift: pShiftStr,
+      qShift: qShiftStr,
+      nShift: nShiftStr,
+      nByteLen,
+    } = e.data;
+
+    const d = BigInt(dStr);
+    const p = BigInt(pStr);
+    const q = BigInt(qStr);
+    const dp = BigInt(dpStr);
+    const dq = BigInt(dqStr);
+    const qInv = BigInt(qInvStr);
+    const muP = BigInt(muPStr);
+    const muQ = BigInt(muQStr);
+    const muN = BigInt(muNStr);
+    const pShift = BigInt(pShiftStr);
+    const qShift = BigInt(qShiftStr);
+    const nShift = BigInt(nShiftStr);
+
+    const results: string[] = [];
+    let useOAEP = true; // 🔥 デフォルトはOAEP
+
+    for (const b64Chunk of chunks) {
+      const chunk = Uint8Array.from(atob(b64Chunk), (c) => c.charCodeAt(0));
+      const c = bytesToBigInt(chunk);
+
+      // バレット還元で c mod p, c mod q
+      const cp = barrettReduce(c, p, muP, pShift);
+      const cq = barrettReduce(c, q, muQ, qShift);
+
+      // 各素数下でのべき乗剰余
+      const m1 = modExp(cp, dp, p, muP, pShift);
+      const m2 = modExp(cq, dq, q, muQ, qShift);
+
+      // CRT結合
+      let diff = m1 - m2;
+      while (diff < 0n) diff += p;
+
+      let h = barrettReduce(qInv * diff, p, muP, pShift);
+      let m = m2 + h * q;
+
+      if (m >= BigInt(nByteLen) * 256n ** BigInt(nByteLen)) {
+        m = barrettReduce(m, p * q, muN, nShift);
+      }
+
+      let messageChunk: Uint8Array;
+
+      // 🔥 OAEPを試して、失敗したら生RSAに自動フォールバック
+      if (useOAEP) {
+        try {
+          let paddedMsg: Uint8Array;
+          try {
+            paddedMsg = bigintToUint8Array(m, nByteLen);
+          } catch {
+            const temp = bigintToUint8Array(m);
+            paddedMsg = new Uint8Array(nByteLen);
+            paddedMsg.set(temp, nByteLen - temp.length);
+          }
+
+          messageChunk = await oeapUnpad(
+            paddedMsg,
+            nByteLen,
+            new Uint8Array(0),
+          );
+        } catch (oeapError) {
+          // 🔥 OAEPエラー → 生RSAに切り替え
+          console.warn("OAEPエラー、生RSAモードに切り替え");
+          useOAEP = false;
+
+          // 🔥 生RSA処理
+          let restoredBytes = bigintToUint8Array(m);
+
+          // 先頭の0x00を除去
+          let start = 0;
+          while (
+            start < restoredBytes.length &&
+            restoredBytes[start] === 0x00
+          ) {
+            start++;
+          }
+
+          if (start > 0) {
+            restoredBytes = restoredBytes.slice(start);
+          }
+
+          messageChunk = restoredBytes;
+        }
+      } else {
+        // 🔥 生RSAモード（2ブロック目以降）
+        let restoredBytes = bigintToUint8Array(m);
+
+        // 先頭の0x00を除去
+        let start = 0;
+        while (start < restoredBytes.length && restoredBytes[start] === 0x00) {
+          start++;
+        }
+
+        if (start > 0) {
+          restoredBytes = restoredBytes.slice(start);
+        }
+
+        messageChunk = restoredBytes;
+      }
+
+      // base64エンコード
+      const base64 = btoa(String.fromCharCode(...messageChunk));
+      results.push(base64);
+    }
+
+    self.postMessage({ results });
+  } catch (error) {
+    self.postMessage({ error: String(error) });
+  }
+};
 
 // ===== Worker Message Handler =====
 
@@ -219,46 +468,76 @@ self.onmessage = async (e: MessageEvent) => {
       dp: dpStr,
       dq: dqStr,
       qInv: qInvStr,
+      muP: muPStr,
+      muQ: muQStr,
+      muN: muNStr,
+      pShift: pShiftStr,
+      qShift: qShiftStr,
+      nShift: nShiftStr,
       nByteLen,
     } = e.data;
 
     const p = BigInt(pStr);
     const q = BigInt(qStr);
+    const n = p * q;
     const dp = BigInt(dpStr);
     const dq = BigInt(dqStr);
     const qInv = BigInt(qInvStr);
+    const muP = BigInt(muPStr);
+    const muQ = BigInt(muQStr);
+    const muN = BigInt(muNStr);
+    const pShift = BigInt(pShiftStr);
+    const qShift = BigInt(qShiftStr);
+    const nShift = BigInt(nShiftStr);
 
     const results: string[] = [];
 
     for (const chunkB64 of chunks) {
-      // base64 → Uint8Array
-      const chunk = Uint8Array.from(atob(chunkB64), c => c.charCodeAt(0));
+      const chunk = Uint8Array.from(atob(chunkB64), (c) => c.charCodeAt(0));
       const c = bytesToBigInt(chunk);
 
-      // CRT復号
-      const cp = c >= p ? c % p : c;
-      const cq = c >= q ? c % q : c;
+      if (c >= n) {
+        throw new Error("復号エラー: 暗号文が不正です（c >= n）");
+      }
 
-      const m1 = modExp(cp, dp, p);
-      const m2 = modExp(cq, dq, q);
+      // バレット還元で c mod p, c mod q
+      const cp = barrettReduce(c, p, muP, pShift);
+      const cq = barrettReduce(c, q, muQ, qShift);
 
+      // 各素数下でのべき乗剰余
+      const m1 = modExp(cp, dp, p, muP, pShift);
+      const m2 = modExp(cq, dq, q, muQ, qShift);
+
+      // CRT結合
       let diff = m1 - m2;
-      if (diff < 0n) diff += p;
+      while (diff < 0n) diff += p;
 
-      const h = (qInv * diff) % p;
-      const m = m2 + h * q;
+      let h = barrettReduce(qInv * diff, p, muP, pShift);
+      let m = m2 + h * q;
 
-      let paddedMsg = bigintToUint8Array(m, nByteLen);
+      if (m >= n) {
+        m = barrettReduce(m, n, muN, nShift);
+      }
+
+      if (m < 0n) {
+        throw new Error("復号エラー: 負数が発生しました");
+      }
+
+      let paddedMsg: Uint8Array;
+      try {
+        paddedMsg = bigintToUint8Array(m, nByteLen);
+      } catch {
+        const temp = bigintToUint8Array(m);
+        paddedMsg = new Uint8Array(nByteLen);
+        paddedMsg.set(temp, nByteLen - temp.length);
+      }
 
       // OAEPアンパッド
-      let messageChunk: Uint8Array;
-      try {
-        messageChunk = await oeapUnpad(paddedMsg, nByteLen, new Uint8Array(0));
-      } catch {
-        // フォールバック
-        const filtered = paddedMsg.filter(byte => byte !== 0x00);
-        messageChunk = new Uint8Array(filtered);
-      }
+      const messageChunk = await oeapUnpad(
+        paddedMsg,
+        nByteLen,
+        new Uint8Array(0),
+      );
 
       // base64エンコード
       const base64 = btoa(String.fromCharCode(...messageChunk));

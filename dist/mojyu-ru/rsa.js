@@ -1,92 +1,6 @@
 export class RSA {
     smallPrimes = null;
-    montgomeryCache = new Map();
-    wasmInstance = null;
-    wasmMemory = null;
-    async loadWasm() {
-        if (this.wasmInstance)
-            return;
-        try {
-            const response = await fetch("./wasm/bigint.wasm");
-            const wasmBuffer = await response.arrayBuffer();
-            const { instance } = await WebAssembly.instantiate(wasmBuffer);
-            this.wasmInstance = instance;
-            this.wasmMemory = instance.exports.memory;
-            console.log("✅ WASMモジュールをブラウザでロードしました");
-        }
-        catch {
-            const response = await fetch("./wasm/bigint.wasm");
-            const wasmBuffer = await response.arrayBuffer();
-            const { instance } = await WebAssembly.instantiate(wasmBuffer);
-            this.wasmInstance = instance;
-            this.wasmMemory = instance.exports.memory;
-            console.log("✅ WASMモジュールをブラウザでロードしました");
-        }
-    }
-    bigintToWasmLimbs(n, limbs) {
-        const arr = new BigUint64Array(limbs);
-        for (let i = 0; i < limbs; i++) {
-            arr[i] = BigInt.asUintN(64, n >> BigInt(i * 64));
-        }
-        return arr;
-    }
-    wasmLimbsToBigint(arr, limbs) {
-        let result = 0n;
-        for (let i = limbs - 1; i >= 0; i--) {
-            result = (result << 64n) | arr[i];
-        }
-        return result;
-    }
-    async wasmModExp(base, exp, mod) {
-        try {
-            console.log("🔷 WASM modExp使用");
-            await this.loadWasm();
-            if (!this.wasmInstance || !this.wasmMemory) {
-                return this.montgomeryModExpUltra(base, exp, mod);
-            }
-            const limbs = Math.ceil(this.bitLength(mod) / 64);
-            const view = new BigUint64Array(this.wasmMemory.buffer);
-            // 各値をリムブ配列に変換
-            const baseArr = this.bigintToWasmLimbs(base, limbs);
-            const expArr = this.bigintToWasmLimbs(exp, limbs);
-            const modArr = this.bigintToWasmLimbs(mod, limbs);
-            // メモリ上のポインタ設定（バイト単位でアドレス指定）
-            const base_ptr = 0;
-            const exp_ptr = limbs;
-            const mod_ptr = limbs * 2;
-            const result_ptr = limbs * 3;
-            // メモリへセット
-            view.set(baseArr, base_ptr);
-            view.set(expArr, exp_ptr);
-            view.set(modArr, mod_ptr);
-            // wasm の modExp を呼ぶ（ポインタはバイトオフセット）
-            const modExp = this.wasmInstance.exports.modExp;
-            // 引数: すべてバイト単位のポインタ
-            modExp(base_ptr * 8, exp_ptr * 8, mod_ptr * 8, result_ptr * 8, limbs);
-            // 結果を取得
-            const resultArr = view.slice(result_ptr, result_ptr + limbs);
-            return this.wasmLimbsToBigint(resultArr, limbs);
-        }
-        catch (error) {
-            console.warn("⚠️ WASM modExp失敗、JavaScriptにフォールバック:", error);
-            return this.montgomeryModExpUltra(base, exp, mod);
-        }
-    }
-    getCacheKey(base, mod, k) {
-        return `${base.toString(36)}-${mod.toString(36)}-${k}`;
-    }
-    clearModExpCache() {
-        this.montgomeryCache.clear();
-    }
-    clearModExpCacheFor(base, mod) {
-        const keysToDelete = [];
-        for (const [key, cache] of this.montgomeryCache.entries()) {
-            if (cache.base === base && cache.mod === mod) {
-                keysToDelete.push(key);
-            }
-        }
-        keysToDelete.forEach((key) => this.montgomeryCache.delete(key));
-    }
+    montgomeryTableCache = new Map();
     async initAsync(binPath) {
         const response = await fetch(binPath);
         const buffer = await response.arrayBuffer();
@@ -254,7 +168,7 @@ export class RSA {
             console.warn("⚠️ Worker初期化失敗、メインスレッドで実行します", err);
         }
     }
-    async encryptStringToBase64(text, e, n, onProgress) {
+    async encryptStringToBase64(text, e, n, muN, nShift, onProgress) {
         const msgBin = new TextEncoder().encode(text);
         const nByteLen = Math.ceil(this.bitLength(n) / 8);
         const maxChunkSize = nByteLen - 66;
@@ -264,19 +178,19 @@ export class RSA {
         }
         this.initWorkers();
         if (this.workersInitialized && chunks.length > 10) {
-            return this.encryptParallel(chunks, e, n, nByteLen, onProgress);
+            return this.encryptParallel(chunks, e, n, muN, nShift, nByteLen, onProgress);
         }
         else {
-            return this.encryptSequential(chunks, e, n, nByteLen, onProgress);
+            return this.encryptSequential(chunks, e, n, muN, nShift, nByteLen, onProgress);
         }
     }
-    async encryptSequential(chunks, e, n, nByteLen, onProgress) {
+    async encryptSequential(chunks, e, n, muN, nShift, nByteLen, onProgress) {
         const encryptedChunks = [];
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
             const paddedMsg = await this.oeapPad(chunk, nByteLen, new Uint8Array(0));
             const m = this.bytesToBigInt(paddedMsg);
-            const c = await this.modExpAsync(m, e, n);
+            const c = this.modExpAsync(m, e, n, muN, nShift);
             const cBytes = this.bigintToUint8Array(c);
             const cBytesPadded = new Uint8Array(nByteLen);
             cBytesPadded.set(cBytes, nByteLen - cBytes.length);
@@ -292,7 +206,7 @@ export class RSA {
         }
         return this.bytesToBase64(combinedEncrypted);
     }
-    async encryptParallel(chunks, e, n, nByteLen, onProgress) {
+    async encryptParallel(chunks, e, n, muN, nShift, nByteLen, onProgress) {
         const chunksPerWorker = Math.ceil(chunks.length / this.workerCount);
         const promises = this.encryptWorkers.map((worker, idx) => {
             const start = idx * chunksPerWorker;
@@ -320,10 +234,13 @@ export class RSA {
                     console.error("❌ Workerエラー:", err);
                     resolve([]);
                 };
+                // 🔥 修正: Uint8Array を Array に変換してから送る
                 worker.postMessage({
-                    chunks: workerChunks,
+                    chunks: workerChunks.map((chunk) => Array.from(chunk)), // ← ここ！
                     e: e.toString(),
                     n: n.toString(),
+                    muN: muN.toString(),
+                    nShift: nShift.toString(),
                     nByteLen,
                 });
             });
@@ -341,7 +258,7 @@ export class RSA {
         onProgress?.("暗号化完了", 100);
         return this.bytesToBase64(combined);
     }
-    async decryptBase64ToString(b64Cipher, d, p, q, n, onProgress, dp, dq, qInv) {
+    async decryptBase64ToString(b64Cipher, d, p, q, n, dp, dq, qInv, muP, muQ, muN, pShift, qShift, nShift, onProgress) {
         try {
             const cipherBin = this.base64ToBytes(b64Cipher);
             const nByteLen = Math.ceil(this.bitLength(n) / 8);
@@ -353,10 +270,10 @@ export class RSA {
             }
             this.initWorkers();
             if (this.workersInitialized && chunks.length > 10) {
-                return this.decryptParallel(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv);
+                return this.decryptParallel(chunks, d, p, q, n, dp, dq, qInv, muP, muQ, muN, pShift, qShift, nShift, nByteLen, onProgress);
             }
             else {
-                return this.decryptSequential(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv);
+                return this.decryptSequential(chunks, d, p, q, n, dp, dq, qInv, muP, muQ, muN, pShift, qShift, nShift, nByteLen, onProgress);
             }
         }
         catch (err) {
@@ -364,52 +281,79 @@ export class RSA {
             throw err;
         }
     }
-    async decryptSequential(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv) {
-        if (!dp)
-            dp = d % (p - 1n);
-        if (!dq)
-            dq = d % (q - 1n);
-        if (!qInv) {
-            qInv = this.getPrivateKeyD(q, p);
-        }
+    async decryptSequential(chunks, d, p, q, n, dp, dq, qInv, muP, muQ, muN, pShift, qShift, nShift, nByteLen, onProgress) {
         const decryptedChunks = [];
+        let useOAEP = true; // 🔥 デフォルトはOAEP
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
             const c = this.bytesToBigInt(chunk);
             if (c >= n) {
                 throw new Error(`復号エラー: ブロック${i}の暗号文が不正です（c >= n）`);
             }
-            const cp = c % p;
-            const cq = c % q;
-            const m1 = await this.modExpAsync(cp, dp, p);
-            const m2 = await this.modExpAsync(cq, dq, q);
-            // 負数対策
-            let diff = (((m1 - m2) % p) + p) % p;
-            let h = (qInv * diff) % p;
+            // バレット還元で c mod p, c mod q
+            const cp = this.barrettReduce(c, p, muP, pShift);
+            const cq = this.barrettReduce(c, q, muQ, qShift);
+            // 各素数下でのべき乗剰余
+            const m1 = this.modExpAsync(cp, dp, p, muP, pShift);
+            const m2 = this.modExpAsync(cq, dq, q, muQ, qShift);
+            // CRT結合
+            let diff = m1 - m2;
+            while (diff < 0n)
+                diff += p;
+            let h = this.barrettReduce(qInv * diff, p, muP, pShift);
             let m = m2 + h * q;
-            // 範囲チェック
             if (m >= n) {
-                m = m % n;
+                m = this.barrettReduce(m, n, muN, nShift);
             }
             if (m < 0n) {
-                throw new Error(`復号エラー: ブロック${i}で負数が発生しま��た`);
+                throw new Error(`復号エラー: ブロック${i}で負数が発生しました`);
             }
-            let paddedMsg;
-            try {
-                paddedMsg = this.bigintToUint8Array(m, nByteLen);
+            let messageChunk;
+            // 🔥 OAEPを試して、失敗したら生RSAに自動フォールバック
+            if (useOAEP) {
+                try {
+                    let paddedMsg;
+                    try {
+                        paddedMsg = this.bigintToUint8Array(m, nByteLen);
+                    }
+                    catch (convError) {
+                        const temp = this.bigintToUint8Array(m);
+                        paddedMsg = new Uint8Array(nByteLen);
+                        paddedMsg.set(temp, nByteLen - temp.length);
+                    }
+                    messageChunk = await this.oeapUnpad(paddedMsg, nByteLen, new Uint8Array(0));
+                }
+                catch (oeapError) {
+                    // 🔥 OAEPパディングエラー → 生RSAに切り替え
+                    console.warn(`ブロック${i}: OAEPエラー、生RSAモードに切り替え`);
+                    useOAEP = false;
+                    // 🔥 生RSA処理
+                    let restoredBytes = this.bigintToUint8Array(m);
+                    // 先頭の0x00を除去
+                    let start = 0;
+                    while (start < restoredBytes.length && restoredBytes[start] === 0x00) {
+                        start++;
+                    }
+                    if (start > 0) {
+                        restoredBytes = restoredBytes.slice(start);
+                    }
+                    messageChunk = restoredBytes;
+                }
             }
-            catch (convError) {
-                const temp = this.bigintToUint8Array(m);
-                paddedMsg = new Uint8Array(nByteLen);
-                paddedMsg.set(temp, nByteLen - temp.length);
+            else {
+                // 🔥 生RSAモード（2ブロック目以降）
+                let restoredBytes = this.bigintToUint8Array(m);
+                // 先頭の0x00を除去
+                let start = 0;
+                while (start < restoredBytes.length && restoredBytes[start] === 0x00) {
+                    start++;
+                }
+                if (start > 0) {
+                    restoredBytes = restoredBytes.slice(start);
+                }
+                messageChunk = restoredBytes;
             }
-            try {
-                const messageChunk = await this.oeapUnpad(paddedMsg, nByteLen, new Uint8Array(0));
-                decryptedChunks.push(messageChunk);
-            }
-            catch (unpadError) {
-                throw new Error(`復号エラー: ブロック${i}のパディング検証に失敗しました`);
-            }
+            decryptedChunks.push(messageChunk);
             onProgress?.(`復号・ブロック処理中 (${i + 1}/${chunks.length})`, Math.floor(((i + 1) / chunks.length) * 100));
         }
         const totalLength = decryptedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
@@ -421,14 +365,7 @@ export class RSA {
         }
         return new TextDecoder().decode(combined);
     }
-    async decryptParallel(chunks, d, p, q, n, nByteLen, onProgress, dp, dq, qInv) {
-        if (!dp)
-            dp = d % (p - 1n);
-        if (!dq)
-            dq = d % (q - 1n);
-        if (!qInv) {
-            qInv = this.getPrivateKeyD(q, p);
-        }
+    async decryptParallel(chunks, d, p, q, n, dp, dq, qInv, muP, muQ, muN, pShift, qShift, nShift, nByteLen, onProgress) {
         const chunksPerWorker = Math.ceil(chunks.length / this.workerCount);
         const chunksB64 = chunks.map((chunk) => btoa(String.fromCharCode(...chunk)));
         const promises = this.decryptWorkers.map((worker, idx) => {
@@ -465,6 +402,12 @@ export class RSA {
                     dp: dp.toString(),
                     dq: dq.toString(),
                     qInv: qInv.toString(),
+                    muP: muP.toString(),
+                    muQ: muQ.toString(),
+                    muN: muN.toString(),
+                    pShift: pShift.toString(),
+                    qShift: qShift.toString(),
+                    nShift: nShift.toString(),
                     nByteLen,
                 });
             });
@@ -536,34 +479,30 @@ export class RSA {
             return null;
         return digestInfo.slice(19, 51);
     }
-    async signStringToBase64(text, d, p, q, n, dp, dq, qInv) {
+    async signStringToBase64(text, d, p, q, n, dp, dq, qInv, muP, muQ, pShift, qShift) {
         const msgBin = new TextEncoder().encode(text);
         const hashBin = await this.sha256(msgBin);
         const keyBits = this.bitLength(n);
         const keyBytes = Math.floor((keyBits + 7) / 8);
         const m = this.addPKCS1Padding(hashBin, keyBits);
-        if (!dp)
-            dp = d % (p - 1n);
-        if (!dq)
-            dq = d % (q - 1n);
-        if (!qInv) {
-            qInv = this.getPrivateKeyD(q, p);
-        }
-        const mp = m % p;
-        const mq = m % q;
-        const s1 = await this.modExpAsync(mp, dp, p);
-        const s2 = await this.modExpAsync(mq, dq, q);
-        let h = (qInv * ((s1 - s2 + p) % p)) % p;
+        const mp = this.barrettReduce(m, p, muP, pShift);
+        const mq = this.barrettReduce(m, q, muQ, qShift);
+        const s1 = this.modExpAsync(mp, dp, p, muP, pShift);
+        const s2 = this.modExpAsync(mq, dq, q, muQ, qShift);
+        let diff = s1 - s2;
+        while (diff < 0n)
+            diff += p;
+        let h = this.barrettReduce(qInv * diff, p, muP, pShift);
         const s = s2 + h * q;
         return this.bytesToBase64(this.bigintToUint8Array(s, keyBytes));
     }
-    async verifyBase64Signature(text, b64Sig, e, n) {
+    async verifyBase64Signature(text, b64Sig, e, n, muN, nShift) {
         try {
             const sigBin = this.base64ToBytes(b64Sig);
             const s = this.bytesToBigInt(sigBin);
             if (s >= n)
                 return false;
-            const m = await this.modExpAsync(s, e, n);
+            const m = this.modExpAsync(s, e, n, muN, nShift);
             const keyBits = this.bitLength(n);
             const keyBytes = Math.floor((keyBits + 7) / 8);
             const em = this.bigintToUint8Array(m, keyBytes);
@@ -583,47 +522,32 @@ export class RSA {
     bitLength(n) {
         return n.toString(2).length;
     }
-    modExp65537(base, mod) {
+    modExp65537(base, mod, mu, shift) {
         if (mod === 1n)
             return 0n;
-        let r = base % mod;
+        let r = this.barrettReduce(base, mod, mu, shift);
         if (r === 0n)
             return 0n;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        r = (r * r) % mod;
-        return (r * (base % mod)) % mod;
-    }
-    binaryModExpOptimized(base, exp, mod) {
-        if (mod === 1n)
-            return 0n;
-        let result = 1n, b = base % mod, e = exp;
-        while (e > 0n) {
-            if ((e & 1n) !== 0n)
-                result = (result * b) % mod;
-            b = (b * b) % mod;
-            e >>= 1n;
+        // 16回の2乗 + 1回の乗算 = 2^16 + 1 = 65537
+        for (let i = 0; i < 16; i++) {
+            r = this.barrettReduce(r * r, mod, mu, shift);
         }
-        return result;
+        return this.barrettReduce(r * this.barrettReduce(base, mod, mu, shift), mod, mu, shift);
     }
-    montgomeryTableCache = new Map();
-    montgomeryModExpUltra(base, exp, mod) {
+    barrettReduce(x, mod, mu, shift) {
+        const q = (x * mu) >> shift;
+        let r = x - q * mod;
+        while (r >= mod) {
+            r -= mod;
+        }
+        while (r < 0n) {
+            r += mod;
+        }
+        return r;
+    }
+    montgomeryModExpUltra(base, exp, mod, mu, shift) {
         const bitLength = (n) => n.toString(2).length;
         const modBits = bitLength(mod);
-        // より最適なウィンドウサイズ決定
         let k;
         if (modBits >= 131072) {
             k = 13;
@@ -664,7 +588,6 @@ export class RSA {
         else {
             k = 1;
         }
-        // -- キャッシュキー: base, mod, wsizeで一意 --
         const cacheKey = `${base}_${mod}_${k}`;
         let params = this.montgomeryTableCache.get(cacheKey);
         if (!params) {
@@ -672,20 +595,17 @@ export class RSA {
             const numOdd = 1 << (wsize - 1);
             const R = 1n << BigInt(modBits);
             const mask = R - 1n;
-            // nPrime計算
             let nPrime = mod & mask;
             for (let i = 0; i < Math.ceil(modBits / 64); i++) {
                 nPrime = (nPrime * (2n - ((mod * nPrime) & mask))) & mask;
             }
             nPrime = (R - nPrime) & mask;
-            // Montgomery reduction
             const montReduce = (T) => {
                 const u = ((T & mask) * nPrime) & mask;
                 const x = (T + u * mod) >> BigInt(modBits);
                 return x >= mod ? x - mod : x;
             };
-            // テーブル生成
-            const baseBar = (base << BigInt(modBits)) % mod;
+            const baseBar = this.barrettReduce(base << BigInt(modBits), mod, mu, shift);
             const baseBar2 = montReduce(baseBar * baseBar);
             const table = new Array(numOdd);
             table[0] = baseBar;
@@ -693,29 +613,33 @@ export class RSA {
                 table[i] = montReduce(table[i - 1] * baseBar2);
             }
             params = {
-                modBits, wsize, R, mask, nPrime, baseBar, baseBar2, table,
+                modBits,
+                wsize,
+                R,
+                mask,
+                nPrime,
+                baseBar,
+                baseBar2,
+                table,
             };
             this.montgomeryTableCache.set(cacheKey, params);
         }
-        // Montgomery reduction (キャッシュから再生)
         const montReduce = (T) => {
             const { mask, nPrime, modBits } = params;
             const u = ((T & mask) * nPrime) & mask;
             const x = (T + u * mod) >> BigInt(modBits);
             return x >= mod ? x - mod : x;
         };
-        // -- Montgomery法通常べき乗部 --
-        // expのbit列をstring化
         const expBin = exp.toString(2);
-        let res = (1n << BigInt(params.modBits)) % mod; // Montgomery形式の1
+        let res = this.barrettReduce(1n << BigInt(params.modBits), mod, mu, shift);
         for (let i = 0; i < expBin.length;) {
-            if (expBin[i] === '0') {
+            if (expBin[i] === "0") {
                 res = montReduce(res * res);
                 i++;
                 continue;
             }
             let winLen = Math.min(params.wsize, expBin.length - i);
-            while (winLen > 1 && expBin[i + winLen - 1] === '0') {
+            while (winLen > 1 && expBin[i + winLen - 1] === "0") {
                 winLen--;
             }
             const winVal = parseInt(expBin.slice(i, i + winLen), 2);
@@ -729,24 +653,11 @@ export class RSA {
         }
         return montReduce(res);
     }
-    modExp(base, exp, mod) {
-        if (exp === 65537n) {
-            return this.modExp65537(base, mod);
-        }
-        if (exp === 3n) {
-            const b = base % mod;
-            return (((b * b) % mod) * b) % mod;
-        }
-        if (exp < 1000000n) {
-            return this.binaryModExpOptimized(base, exp, mod);
-        }
-        return this.montgomeryModExpUltra(base, exp, mod);
-    }
-    modExpAsync(base, exp, mod) {
+    modExpAsync(base, exp, mod, mu, shift) {
         if (base < 0n || exp < 0n || mod <= 0n) {
             throw new Error("modExpAsync: 不正な入力値");
         }
-        base = base % mod;
+        base = this.barrettReduce(base, mod, mu, shift);
         if (base < 0n)
             base += mod;
         if (exp === 0n)
@@ -756,22 +667,14 @@ export class RSA {
         if (mod === 1n)
             return 0n;
         if (exp === 65537n) {
-            return this.modExp65537(base, mod);
+            return this.modExp65537(base, mod, mu, shift);
         }
         if (exp === 3n) {
-            const b = base % mod;
-            return (((b * b) % mod) * b) % mod;
+            const b = this.barrettReduce(base, mod, mu, shift);
+            const b2 = this.barrettReduce(b * b, mod, mu, shift);
+            return this.barrettReduce(b2 * b, mod, mu, shift);
         }
-        if (exp < 100000n) {
-            return this.binaryModExpOptimized(base, exp, mod);
-        }
-        // 通常はwasm（フォールバック付き）
-        try {
-            return this.montgomeryModExpUltra(base, exp, mod);
-        }
-        catch (error) {
-            return this.montgomeryModExpUltra(base, exp, mod);
-        }
+        return this.montgomeryModExpUltra(base, exp, mod, mu, shift);
     }
     parsePublicKeyPem(pem) {
         const base64 = pem.replace(/-----.*?-----|\s+/g, "");
@@ -816,7 +719,10 @@ export class RSA {
             else if (v === 65537n || v === 3n)
                 e = v;
         }
-        return { n, e };
+        const kN = BigInt(this.bitLength(n));
+        const muN = (1n << (kN * 2n)) / n;
+        const nShift = kN * 2n;
+        return { n, e, muN, nShift };
     }
     parsePrivateKeyPem(pem) {
         if (pem.includes("BEGIN OPENSSH PRIVATE KEY")) {
@@ -855,13 +761,56 @@ export class RSA {
                 offset += len;
             }
         }
-        const bigOnes = integers.filter((v) => v > 0n);
+        // 🔥 修正: PKCS#8 と PKCS#1 を自動判定
+        let n, e, d, p, q, dp, dq, qInv;
+        if (integers.length === 9) {
+            // PKCS#1形式（直接）
+            ("🔍 PKCS#1形式を検出");
+            n = integers[1];
+            e = integers[2];
+            d = integers[3];
+            p = integers[4];
+            q = integers[5];
+            dp = integers[6];
+            dq = integers[7];
+            qInv = integers[8];
+        }
+        else if (integers.length === 10) {
+            // PKCS#8形式（exportToPemが作る形式）
+            ("🔍 PKCS#8形式を検出");
+            n = integers[2]; // ← 1つずれる！
+            e = integers[3];
+            d = integers[4];
+            p = integers[5];
+            q = integers[6];
+            dp = integers[7];
+            dq = integers[8];
+            qInv = integers[9];
+        }
+        else {
+            throw new Error(`想定外のinteger数: ${integers.length} (期待: 9 or 10)`);
+        }
+        const kN = BigInt(this.bitLength(n));
+        const kP = BigInt(this.bitLength(p));
+        const kQ = BigInt(this.bitLength(q));
+        const muN = (1n << (kN * 2n)) / n;
+        const muP = (1n << (kP * 2n)) / p;
+        const muQ = (1n << (kQ * 2n)) / q;
         return {
-            n: bigOnes[0],
-            e: bigOnes[1],
-            d: bigOnes[2],
-            p: bigOnes[3],
-            q: bigOnes[4],
+            n,
+            e,
+            d,
+            p,
+            q,
+            dp,
+            dq,
+            qInv,
+            muN,
+            muP,
+            muQ,
+            nShift: kN * 2n,
+            pShift: kP * 2n,
+            qShift: kQ * 2n,
         };
     }
     parseOpenSSH(pem) {
@@ -898,10 +847,33 @@ export class RSA {
         const n = this.bytesToBigInt(readBlobBuffer());
         const e = this.bytesToBigInt(readBlobBuffer());
         const d = this.bytesToBigInt(readBlobBuffer());
-        const iqmp = this.bytesToBigInt(readBlobBuffer());
+        const qInv = this.bytesToBigInt(readBlobBuffer());
         const p = this.bytesToBigInt(readBlobBuffer());
         const q = this.bytesToBigInt(readBlobBuffer());
-        return { n, e, d, p, q };
+        const dp = d % (p - 1n);
+        const dq = d % (q - 1n);
+        const kN = BigInt(this.bitLength(n));
+        const kP = BigInt(this.bitLength(p));
+        const kQ = BigInt(this.bitLength(q));
+        const muN = (1n << (kN * 2n)) / n;
+        const muP = (1n << (kP * 2n)) / p;
+        const muQ = (1n << (kQ * 2n)) / q;
+        return {
+            n,
+            e,
+            d,
+            p,
+            q,
+            dp,
+            dq,
+            qInv,
+            muN,
+            muP,
+            muQ,
+            nShift: kN * 2n,
+            pShift: kP * 2n,
+            qShift: kQ * 2n,
+        };
     }
     bytesToBigInt(bytes) {
         const len = bytes.length;
@@ -975,7 +947,29 @@ export class RSA {
             const dp = d % (p - 1n);
             const dq = d % (q - 1n);
             const qInv = this.getPrivateKeyD(q, p);
-            return { n, e, d, p, q, phi, dp, dq, qInv };
+            const kN = BigInt(this.bitLength(n));
+            const kP = BigInt(this.bitLength(p));
+            const kQ = BigInt(this.bitLength(q));
+            const muN = (1n << (kN * 2n)) / n;
+            const muP = (1n << (kP * 2n)) / p;
+            const muQ = (1n << (kQ * 2n)) / q;
+            return {
+                n,
+                e,
+                d,
+                p,
+                q,
+                phi,
+                dp,
+                dq,
+                qInv,
+                muN,
+                muP,
+                muQ,
+                nShift: kN * 2n,
+                pShift: kP * 2n,
+                qShift: kQ * 2n,
+            };
         }
         return this.generateRSAKeyPair(bits);
     }
@@ -1154,14 +1148,18 @@ export class RSA {
         }
         const nm1 = n - 1n;
         const bases = [2n, 3n, 5n, 7n, 11n, 13n, 17n, 19n, 23n, 29n, 31n, 37n];
+        // Miller-Rabin用のmu計算
+        const kN = BigInt(this.bitLength(n));
+        const muN = (1n << (kN * 2n)) / n;
+        const nShift = kN * 2n;
         for (let i = 0; i < k; i++) {
             const a = i < bases.length ? bases[i] : this.rnd(nm1);
-            let x = this.modExp(a, d, n);
+            let x = this.modExpAsync(a, d, n, muN, nShift);
             if (x === 1n || x === nm1)
                 continue;
             let composite = true;
             for (let r = 1; r < s; r++) {
-                x = this.modExp(x, 2n, n);
+                x = this.modExpAsync(x, 2n, n, muN, nShift);
                 if (x === nm1) {
                     composite = false;
                     break;

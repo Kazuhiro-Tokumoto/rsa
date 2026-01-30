@@ -48,7 +48,10 @@ function modExp(base: bigint, exp: bigint, mod: bigint): bigint {
   const mask = R - 1n;
 
   // モンゴメリ定数 nPrime の計算 (拡張ユークリッド法)
-  let t = 0n, newT = 1n, r = R, m = mod;
+  let t = 0n,
+    newT = 1n,
+    r = R,
+    m = mod;
   while (m !== 0n) {
     const q = r / m;
     [t, newT] = [newT, t - q * newT];
@@ -126,7 +129,7 @@ function isProbablyPrime(n: bigint, k: number = 15): boolean {
 
   for (let i = 0; i < k; i++) {
     const a = i < bases.length ? bases[i] : rnd(nm1);
-    
+
     // 最初だけ重い modExp
     let x = modExp(a, d, n);
     if (x === 1n || x === nm1) continue;
@@ -149,10 +152,12 @@ function isProbablyPrime(n: bigint, k: number = 15): boolean {
 // ===== メイン：鍵生成(generateLargePrime) =====
 
 async function loadSmallPrimes() {
-  const response = await fetch("https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin");
+  const response = await fetch(
+    "https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin",
+  );
   const buffer = await response.arrayBuffer();
   const view = new Uint32Array(buffer);
-  smallPrimesBI = Array.from(view).map(p => BigInt(p));
+  smallPrimesBI = Array.from(view).map((p) => BigInt(p));
 }
 
 function generateLargePrime(bits: number): bigint {
@@ -161,7 +166,12 @@ function generateLargePrime(bits: number): bigint {
   const stepSize = 2000; // 一度にチェックする範囲
   const sieve = new Uint32Array(Math.ceil(stepSize / 32));
   while (true) {
-   let pBase = bytesToBigInt(globalThis.crypto.getRandomValues(new Uint8Array(bits / 8))) | 1n | min;
+    let pBase =
+      bytesToBigInt(
+        globalThis.crypto.getRandomValues(new Uint8Array(bits / 8)),
+      ) |
+      1n |
+      min;
 
     // 1万個の素数に対する「初期の剰余」を計算
     const initialRems = new Int32Array(smallPrimesBI.length);
@@ -170,16 +180,16 @@ function generateLargePrime(bits: number): bigint {
     }
 
     // ビットマップ作成 (2000ビット = 32bit型 × 63要素)
-    sieve.fill(0xFFFFFFFF); // 最初は全部「素数候補(1)」
+    sieve.fill(0xffffffff); // 最初は全部「素数候補(1)」
 
     // 1万個の素数で一気にふるいにかける
     for (let j = 0; j < smallPrimesBI.length; j++) {
       const pj = Number(smallPrimesBI[j]);
       let r = initialRems[j];
-      
+
       // pBase + 2*k が pj で割り切れる場所を 0 にする
       // (pj - r) が偶数なら (pj-r)/2, 奇数なら (2*pj-r)/2 からスタート
-      let start = (r === 0) ? 0 : (pj - r);
+      let start = r === 0 ? 0 : pj - r;
       if (start % 2 !== 0) start += pj;
       start /= 2;
 
@@ -193,7 +203,8 @@ function generateLargePrime(bits: number): bigint {
       if (sieve[k >> 5] & (1 << (k & 31))) {
         const p = pBase + BigInt(k * 2);
         if ((p - 1n) % e !== 0n) {
-          if (isProbablyPrime(p, 1)) { // 1回だけ判定
+          if (isProbablyPrime(p, 1)) {
+            // 1回だけ判定
             if (isProbablyPrime(p, 5)) return p; // 通れば確定
           }
         }
