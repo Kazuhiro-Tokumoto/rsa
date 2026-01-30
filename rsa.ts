@@ -1332,6 +1332,7 @@ async function demo() {
   console.log("=".repeat(60));
 
   console.time("⏱️  署名時間");
+  console.log("💬 署名対象メッセージ: ", message);
   const signature = rsa.signStringToBase64(
     message,
     keys.d,
