@@ -700,7 +700,7 @@ export class RSA {
             }
           }
         }
-
+        process.stdout.write(".");
         p += 2n;
         for (let j = 0; j < this.smallPrimes!.length; j++) {
           const pj = this.smallPrimes![j];
@@ -710,7 +710,6 @@ export class RSA {
           }
           remainders[j] = r;
         }
-        process.stdout.write(".");
       }
     }
   }
@@ -1266,108 +1265,317 @@ export class RSA {
 
 
 // ===== デモ関数 =====
-async function demo() {
+import * as readline from 'readline';
+import * as path from 'path';
+
+// ===== 対話型インターフェース =====
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+// 1行質問
+function question(query: string): Promise<string> {
+  return new Promise((resolve) => rl.question(query, resolve));
+}
+
+// 複数行（2回連続エンターで終了）
+async function questionMultiline(prompt: string): Promise<string> {
+  console.log(prompt);
+  console.log('（エンターを2回押すと確定します）\n');
+  const lines: string[] = [];
+  while (true) {
+    const line = await new Promise<string>((resolve) =>
+      rl.question('', resolve)
+    );
+    if (line === '' && lines.length > 0 && lines[lines.length - 1] === '') {
+      break;
+    }
+    lines.push(line);
+  }
+  while (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines.join('\n');
+}
+
+// PEM正規化
+function normalizePEM(input: string): string {
+  const lines = input.split('\n').map(l => l.trim()).filter(l => l.length);
+  const startIndex = lines.findIndex(l => l.startsWith('-----BEGIN '));
+  const endIndex = lines.findIndex(l => l.startsWith('-----END '));
+  if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+    const header = lines[startIndex];
+    const footer = lines[endIndex];
+    const base64 = lines.slice(startIndex + 1, endIndex).join('').replace(/\s+/g, '');
+    const normBase64 = base64.match(/.{1,64}/g)?.join('\n') ?? '';
+    return [header, normBase64, footer].join('\n');
+  }
+  return input.replace(/\s+/g, '');
+}
+
+// ファイルからPEM読み込み
+async function pemFileImport(): Promise<string> {
+  const filePath = await question('\nPEMファイルのパスを入力してください（ドラッグ&ドロップも可）: ');
+  let resolvedPath = filePath.trim();
+  // ドラッグ&ドロップ等のクオーテーションを除去
+  if (resolvedPath.startsWith('"') && resolvedPath.endsWith('"')) {
+    resolvedPath = resolvedPath.slice(1, -1);
+  }
+  resolvedPath = path.resolve(resolvedPath);
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`ファイルが存在しません: ${resolvedPath}`);
+  }
+  return fs.readFileSync(resolvedPath, 'utf-8');
+}
+
+// ===== メイン対話型デモ =====
+async function interactiveDemo() {
   const rsa = new RSA();
-  
-  // 🔥 initAsync を追加
   await rsa.initAsync('./primes.bin');
 
   console.log("=".repeat(60));
-  console.log("🔐 RSA暗号化デモ");
+  console.log("🔐 対話型RSA暗号ツール");
   console.log("=".repeat(60));
 
-  // 鍵生成（4096bitで実行）
-  console.time("⏱️  鍵生成時間");
-  const keys = await rsa.generateRSAKeyPair(4096); // 🔥 await追加
-  console.timeEnd("⏱️  鍵生成時間");
+  // 鍵生成 or インポート
+  const genKey = await question('\n鍵を生成しますか？ (y/n/peminport): ');
 
-  // PEM形式にエクスポート
-  const privPem = rsa.exportToPem(keys.n, keys.e, keys.d, keys.p, keys.q);
-  const pubPem = rsa.PublicKeyPem(keys.n, keys.e);
+  let parsedPrivKey: any = null;
+  let parsedPubKey: any = null;
+  let hasPrivateKey = false;
 
-  console.log("\n📝 公開鍵 (PEM):");
-  console.log(pubPem);
-  console.log("\n🔐 秘密鍵 (PEM):");
-  console.log(privPem);
+  if (genKey.toLowerCase() === 'y') {
+    // 鍵生成
+    const bitsStr = await question('鍵長を入力してください (2048/4096/8192): ');
+    const bits = parseInt(bitsStr);
 
-  // 暗号化・復号テスト
-  const message = "Hello, RSA! 🔒";
-  console.log(`\n💬 元のメッセージ: "${message}"`);
+    console.log('\n🔑 鍵を生成中...');
+    console.time('⏱️  鍵生成時間');
+    const keys = await rsa.generateRSAKeyPair(bits);
+    console.timeEnd('⏱️  鍵生成時間');
 
-  console.time("⏱️  暗号化時間");
-  const encrypted = rsa.encryptStringToBase64(
-    message,
-    keys.e,
-    keys.n,
-    keys.muN,
-    keys.nShift,
-  );
-  console.timeEnd("⏱️  暗号化時間");
-  console.log("🔒 暗号化: ", encrypted);
+    const privPem = rsa.exportToPem(keys.n, keys.e, keys.d, keys.p, keys.q);
+    const pubPem = rsa.PublicKeyPem(keys.n, keys.e);
 
-  console.time("⏱️  復号時間");
-  const decrypted = rsa.decryptBase64ToString(
-    encrypted,
-    keys.d,
-    keys.p,
-    keys.q,
-    keys.n,
-    keys.dp,
-    keys.dq,
-    keys.qInv,
-    keys.muP,
-    keys.muQ,
-    keys.muN,
-    keys.pShift,
-    keys.qShift,
-    keys.nShift,
-  );
-  console.timeEnd("⏱️  復号時間");
-  console.log(`🔓 復号化: "${decrypted}"`);
-  console.log(`✅ 一致: ${message === decrypted}`);
+    console.log('\n📝 公開鍵 (PEM):');
+    console.log(pubPem);
+    console.log('\n🔐 秘密鍵 (PEM):');
+    console.log(privPem);
 
-  // 署名・検証テスト
-  console.log("\n" + "=".repeat(60));
-  console.log("✍️  デジタル署名デモ");
-  console.log("=".repeat(60));
+    parsedPrivKey = keys;
+    parsedPubKey = { n: keys.n, e: keys.e, muN: keys.muN, nShift: keys.nShift };
+    hasPrivateKey = true;
 
-  console.time("⏱️  署名時間");
-  console.log("💬 署名対象メッセージ: ", message);
-  const signature = rsa.signStringToBase64(
-    message,
-    keys.d,
-    keys.p,
-    keys.q,
-    keys.n,
-    keys.dp,
-    keys.dq,
-    keys.qInv,
-    keys.muP,
-    keys.muQ,
-    keys.pShift,
-    keys.qShift,
-  );
-  console.timeEnd("⏱️  署名時間");
-  console.log("📝 署名:", signature);
+  } else if (genKey.toLowerCase() === 'n') {
+    // 鍵インポート（ペースト）
+    const keyType = await question('\nインポートする鍵の種類を選択してください (pub/priv): ');
 
-  console.time("⏱️  検証時間");
-  const isValid = rsa.verifyBase64Signature(
-    message,
-    signature,
-    keys.e,
-    keys.n,
-    keys.muN,
-    keys.nShift,
-  );
-  console.timeEnd("⏱️  検証時間");
-  console.log(`✅ 検証結果: ${isValid ? "正当" : "不正"}`);
+    if (keyType.toLowerCase() === 'priv') {
+      const privPemRaw = await questionMultiline('\n秘密鍵をペーストしてください (PEM形式):');
+      const privPem = normalizePEM(privPemRaw);
+      try {
+        parsedPrivKey = rsa.parsePrivateKeyPem(privPem);
+        parsedPubKey = {
+          n: parsedPrivKey.n,
+          e: parsedPrivKey.e,
+          muN: parsedPrivKey.muN,
+          nShift: parsedPrivKey.nShift,
+        };
+        hasPrivateKey = true;
+        console.log('\n✅ 秘密鍵を読み込みました');
+      } catch (e) {
+        console.log('❌ 無効な秘密鍵です。終了します。');
+        rl.close();
+        process.exit(0);
+      }
 
-  console.log("\n" + "=".repeat(60));
-  console.log(
-    "💡 ヒント: 8192bitで試すには、generateRSAKeyPair(8192) に変更してください",
-  );
-  console.log("=".repeat(60));
+    } else if (keyType.toLowerCase() === 'pub') {
+      const pubPemRaw = await questionMultiline('\n公開鍵をペーストしてください (PEM形式):');
+      const pubPem = normalizePEM(pubPemRaw);
+      try {
+        parsedPubKey = rsa.parsePublicKeyPem(pubPem);
+        hasPrivateKey = false;
+        console.log('\n✅ 公開鍵を読み込みました');
+      } catch (e) {
+        console.log('❌ 無効な公開鍵です。終了します。');
+        rl.close();
+        process.exit(0);
+      }
+
+    } else {
+      console.log('❌ 無効な選択です。終了します。');
+      rl.close();
+      process.exit(0);
+    }
+  } else if (genKey.toLowerCase() === 'peminport') {
+    // ファイルからインポート
+    const keyType = await question('\n読み込む鍵の種類を選択してください (pub/priv): ');
+    try {
+      const pemRaw = await pemFileImport();
+      const pem = normalizePEM(pemRaw);
+      if (keyType.toLowerCase() === 'priv') {
+        parsedPrivKey = rsa.parsePrivateKeyPem(pem);
+        parsedPubKey = {
+          n: parsedPrivKey.n,
+          e: parsedPrivKey.e,
+          muN: parsedPrivKey.muN,
+          nShift: parsedPrivKey.nShift,
+        };
+        hasPrivateKey = true;
+        console.log('\n✅ ファイルから秘密鍵を読み込みました');
+      } else if (keyType.toLowerCase() === 'pub') {
+        parsedPubKey = rsa.parsePublicKeyPem(pem);
+        hasPrivateKey = false;
+        console.log('\n✅ ファイルから公開鍵を読み込みました');
+      } else {
+        throw new Error('無効な選択です。');
+      }
+    } catch (e) {
+      console.log('❌ 鍵ファイルの読み込み/解析に失敗しました。終了します。');
+      rl.close();
+      process.exit(0);
+    }
+  } else {
+    console.log('❌ 無効な入力です。終了します。');
+    rl.close();
+    process.exit(0);
+  }
+
+  // 操作ループ
+  while (true) {
+    console.log('\n' + '='.repeat(60));
+    console.log('📋 操作を選択してください:');
+    console.log('  1. 暗号化 (Encrypt)');
+    console.log('  2. 検証 (Verify Signature)');
+    if (hasPrivateKey) {
+      console.log('  3. 復号化 (Decrypt)');
+      console.log('  4. 署名 (Sign)');
+    }
+    console.log('  q. 終了 (Quit)');
+    console.log('='.repeat(60));
+
+    const operation = await question('\n操作番号を入力: ');
+
+    if (operation === 'q' || operation === 'Q') {
+      console.log('\n👋 終了します。');
+      rl.close();
+      process.exit(0);
+    }
+
+    // 暗号化
+    if (operation === '1') {
+      const plaintext = await questionMultiline('\n暗号化するメッセージを入力してください:');
+      console.log('\n🔒 暗号化中...');
+      console.time('⏱️  暗号化時間');
+      try {
+        const encrypted = rsa.encryptStringToBase64(
+          plaintext,
+          parsedPubKey.e,
+          parsedPubKey.n,
+          parsedPubKey.muN,
+          parsedPubKey.nShift,
+        );
+        console.timeEnd('⏱️  暗号化時間');
+        console.log('\n✅ 暗号化結果:');
+        console.log(encrypted);
+      } catch (e) {
+        console.timeEnd('⏱️  暗号化時間');
+        console.log(`\n❌ 暗号化エラー: ${e}`);
+      }
+    }
+
+    // 検証
+    else if (operation === '2') {
+      const message = await questionMultiline('\n検証するメッセージを入力してください:');
+      const signature = await questionMultiline('\n署名を入力してください:');
+
+      console.log('\n🔍 検証中...');
+      console.time('⏱️  検証時間');
+      try {
+        const isValid = rsa.verifyBase64Signature(
+          message,
+          signature,
+          parsedPubKey.e,
+          parsedPubKey.n,
+          parsedPubKey.muN,
+          parsedPubKey.nShift,
+        );
+        console.timeEnd('⏱️  検証時間');
+        console.log(`\n${isValid ? '✅ 正当な署名です' : '❌ 不正な署名です'}`);
+      } catch (e) {
+        console.timeEnd('⏱️  検証時間');
+        console.log(`\n❌ 検証エラー: ${e}`);
+      }
+    }
+
+    // 復号化
+    else if (operation === '3' && hasPrivateKey) {
+      const ciphertext = await questionMultiline('\n復号化する暗号文を入力してください:');
+      console.log('\n🔓 復号化中...');
+      console.time('⏱️  復号時間');
+      try {
+        const decrypted = rsa.decryptBase64ToString(
+          ciphertext,
+          parsedPrivKey.d,
+          parsedPrivKey.p,
+          parsedPrivKey.q,
+          parsedPrivKey.n,
+          parsedPrivKey.dp,
+          parsedPrivKey.dq,
+          parsedPrivKey.qInv,
+          parsedPrivKey.muP,
+          parsedPrivKey.muQ,
+          parsedPrivKey.muN,
+          parsedPrivKey.pShift,
+          parsedPrivKey.qShift,
+          parsedPrivKey.nShift,
+        );
+        console.timeEnd('⏱️  復号時間');
+        console.log('\n✅ 復号結果:');
+        console.log(decrypted);
+      } catch (e) {
+        console.timeEnd('⏱️  復号時間');
+        console.log(`\n❌ 復号エラー: ${e}`);
+      }
+    }
+
+    // 署名
+    else if (operation === '4' && hasPrivateKey) {
+      const message = await questionMultiline('\n署名するメッセージを入力してください:');
+      console.log('\n✍️  署名中...');
+      console.time('⏱️  署名時間');
+      try {
+        const signature = rsa.signStringToBase64(
+          message,
+          parsedPrivKey.d,
+          parsedPrivKey.p,
+          parsedPrivKey.q,
+          parsedPrivKey.n,
+          parsedPrivKey.dp,
+          parsedPrivKey.dq,
+          parsedPrivKey.qInv,
+          parsedPrivKey.muP,
+          parsedPrivKey.muQ,
+          parsedPrivKey.pShift,
+          parsedPrivKey.qShift,
+        );
+        console.timeEnd('⏱️  署名時間');
+        console.log('\n✅ 署名結果:');
+        console.log(signature);
+      } catch (e) {
+        console.timeEnd('⏱️  署名時間');
+        console.log(`\n❌ 署名エラー: ${e}`);
+      }
+    }
+
+    else {
+      console.log('\n❌ 無効な操作です。');
+    }
+  }
 }
 
 // 実行
-demo();
+interactiveDemo().catch((err) => {
+  console.error('エラー:', err);
+  rl.close();
+  process.exit(1);
+});
