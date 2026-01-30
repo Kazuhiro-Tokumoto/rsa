@@ -1115,7 +1115,14 @@ private modExpAsync(
       else if (v === 65537n || v === 3n) e = v;
     }
 
-    return { n, e };
+    return {
+  n,
+  e,
+  // 公開鍵でも muN さえあれば、暗号化は「ただの掛け算」になる
+  muN: (1n << (BigInt(this.bitLength(n)) * 2n)) / n,
+  nShift: BigInt(this.bitLength(n)) * 2n
+};
+
   }
 
   public parsePrivateKeyPem(pem: string) {
