@@ -1231,12 +1231,37 @@ private modExpAsync(
     const n = this.bytesToBigInt(readBlobBuffer());
     const e = this.bytesToBigInt(readBlobBuffer());
     const d = this.bytesToBigInt(readBlobBuffer());
-    const iqmp = this.bytesToBigInt(readBlobBuffer());
+    const iqmp = this.bytesToBigInt(readBlobBuffer()); // qInv
     const p = this.bytesToBigInt(readBlobBuffer());
     const q = this.bytesToBigInt(readBlobBuffer());
 
-    return { n, e, d, p, q };
-  }
+    // --- ここから追加：爆速のための「先行投資」 ---
+    
+    // 1. CRT用の指数を計算（パース時の一回だけなのでコストは無視できる）
+    const dp = d % (p - 1n);
+    const dq = d % (q - 1n);
+
+    // 2. バレット還元用の定数 (mu) を動的に生成
+    // bitLength() を再利用して精度を最適化
+    const kP = BigInt(this.bitLength(p));
+    const kQ = BigInt(this.bitLength(q));
+    const kN = BigInt(this.bitLength(n));
+
+    const muP = (1n << (kP * 2n)) / p;
+    const muQ = (1n << (kQ * 2n)) / q;
+    const muN = (1n << (kN * 2n)) / n; // 暗号化やnでの剰余用
+
+    // 全パーツを揃えて返却
+    return { 
+      n, e, d, p, q, 
+      dp, dq, 
+      qInv: iqmp,
+      muP, muQ, muN,
+      pShift: kP * 2n,
+      qShift: kQ * 2n,
+      nShift: kN * 2n
+    };
+}
 
   private bytesToBigInt(bytes: Uint8Array): bigint {
     const len = bytes.length;
