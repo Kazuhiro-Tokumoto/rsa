@@ -694,7 +694,6 @@ export class RSA {
         if (!isComposite && (p - 1n) % e !== 0n) {
           process.stdout.write("?")
           if (this.isProbablyPrime(p, 2)) {
-            process.stdout.write("!?")
             if (this.isProbablyPrime(p, 5)) {
               console.log("!")
               return p;
