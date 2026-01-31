@@ -1,6 +1,6 @@
+//@ts-nocheck
 // ===== グローバル変数 =====
 let smallPrimesBI: bigint[] = [];
-
 // ===== ユーティリティ関数 =====
 
 function bytesToBigInt(bytes: Uint8Array): bigint {

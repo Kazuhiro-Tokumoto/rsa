@@ -1239,103 +1239,355 @@ export class RSA {
     }
 }
 export class LatticeKEM {
-    N = 512;
-    Q = 12289n;
+    N = 256;
+    Q = 3329n;
+    K = 2;
+    ETA1 = 2n; // 3→2に減らして安定化
+    ETA2 = 2n;
+    constructor() { }
+    mod(a, m) {
+        const result = a % m;
+        return result < 0n ? result + m : result;
+    }
+    modPow(base, exp, mod) {
+        let result = 1n;
+        base = base % mod;
+        while (exp > 0n) {
+            if (exp & 1n)
+                result = (result * base) % mod;
+            exp = exp >> 1n;
+            base = (base * base) % mod;
+        }
+        return result;
+    }
+    polyMul(a, b) {
+        const result = new Array(this.N).fill(0n);
+        for (let i = 0; i < this.N; i++) {
+            for (let j = 0; j < this.N; j++) {
+                const k = (i + j) % this.N;
+                if (i + j < this.N) {
+                    result[k] = this.mod(result[k] + a[i] * b[j], this.Q);
+                }
+                else {
+                    result[k] = this.mod(result[k] - a[i] * b[j], this.Q);
+                }
+            }
+        }
+        return result;
+    }
+    polyAdd(a, b) {
+        const result = new Array(this.N);
+        for (let i = 0; i < this.N; i++) {
+            result[i] = this.mod(a[i] + b[i], this.Q);
+        }
+        return result;
+    }
+    polySub(a, b) {
+        const result = new Array(this.N);
+        for (let i = 0; i < this.N; i++) {
+            result[i] = this.mod(a[i] - b[i], this.Q);
+        }
+        return result;
+    }
+    sampleCBD(eta, randomBytes) {
+        const poly = new Array(this.N);
+        const etaNum = Number(eta);
+        for (let i = 0; i < this.N; i++) {
+            let a = 0n;
+            let b = 0n;
+            // eta個のビットペアを取得
+            for (let j = 0; j < etaNum; j++) {
+                const bytePos = Math.floor((i * etaNum * 2 + j * 2) / 8);
+                const bitPos = (i * etaNum * 2 + j * 2) % 8;
+                if (bytePos < randomBytes.length) {
+                    const byte = randomBytes[bytePos];
+                    const bit1 = (byte >> bitPos) & 1;
+                    const bit2 = (byte >> (bitPos + 1)) & 1;
+                    a += BigInt(bit1);
+                    b += BigInt(bit2);
+                }
+            }
+            poly[i] = this.mod(a - b, this.Q);
+        }
+        return poly;
+    }
+    async sampleUniform(seed, x, y) {
+        const poly = new Array(this.N);
+        let index = 0;
+        let nonce = 0;
+        while (index < this.N) {
+            const input = new Uint8Array(seed.length + 3);
+            input.set(seed);
+            input[seed.length] = x;
+            input[seed.length + 1] = y;
+            input[seed.length + 2] = nonce++;
+            const hash = await window.crypto.subtle.digest('SHA-256', input);
+            const hashArray = new Uint8Array(hash);
+            for (let i = 0; i < hashArray.length - 1 && index < this.N; i += 2) {
+                const d1 = (hashArray[i] | (hashArray[i + 1] << 8)) & 0x0FFF;
+                if (d1 < Number(this.Q)) {
+                    poly[index++] = BigInt(d1);
+                }
+            }
+        }
+        return poly;
+    }
+    async prf(key, nonce, length) {
+        const input = new Uint8Array(key.length + 1);
+        input.set(key);
+        input[key.length] = nonce;
+        const result = new Uint8Array(length);
+        let offset = 0;
+        let counter = 0;
+        while (offset < length) {
+            const hashInput = new Uint8Array(input.length + 1);
+            hashInput.set(input);
+            hashInput[input.length] = counter++;
+            const hash = await window.crypto.subtle.digest('SHA-256', hashInput);
+            const hashArray = new Uint8Array(hash);
+            const copyLen = Math.min(hashArray.length, length - offset);
+            result.set(hashArray.subarray(0, copyLen), offset);
+            offset += copyLen;
+        }
+        return result;
+    }
+    encodePoly(poly) {
+        const bytes = new Uint8Array((this.N * 12) / 8);
+        let byteIndex = 0;
+        for (let i = 0; i < this.N; i += 2) {
+            const t0 = Number(this.mod(poly[i], this.Q));
+            const t1 = Number(this.mod(poly[i + 1], this.Q));
+            bytes[byteIndex] = t0 & 0xFF;
+            bytes[byteIndex + 1] = ((t0 >> 8) & 0x0F) | ((t1 & 0x0F) << 4);
+            bytes[byteIndex + 2] = (t1 >> 4) & 0xFF;
+            byteIndex += 3;
+        }
+        return bytes;
+    }
+    decodePoly(bytes) {
+        const poly = new Array(this.N);
+        let byteIndex = 0;
+        for (let i = 0; i < this.N; i += 2) {
+            poly[i] = BigInt(bytes[byteIndex] | ((bytes[byteIndex + 1] & 0x0F) << 8));
+            poly[i + 1] = BigInt(((bytes[byteIndex + 1] >> 4) & 0x0F) | (bytes[byteIndex + 2] << 4));
+            byteIndex += 3;
+        }
+        return poly;
+    }
+    encodeMessage(msg) {
+        const poly = new Array(this.N).fill(0n);
+        const halfQ = this.Q / 2n;
+        for (let i = 0; i < 256; i++) {
+            const byteIndex = Math.floor(i / 8);
+            const bitIndex = i % 8;
+            const bit = (msg[byteIndex] >> (7 - bitIndex)) & 1;
+            // ビット1 → Q/2, ビット0 → 0
+            poly[i] = BigInt(bit) * halfQ;
+        }
+        return poly;
+    }
+    decodeMessage(poly) {
+        const msg = new Uint8Array(32);
+        const quarterQ = this.Q / 4n;
+        const threeQuarterQ = (3n * this.Q) / 4n;
+        for (let i = 0; i < 256; i++) {
+            let coeff = this.mod(poly[i], this.Q);
+            // より保守的な閾値：Q/4 < coeff < 3Q/4 なら 1
+            const bit = coeff > quarterQ && coeff < threeQuarterQ ? 1 : 0;
+            if (bit === 1) {
+                const byteIndex = Math.floor(i / 8);
+                const bitIndex = 7 - (i % 8);
+                msg[byteIndex] |= (1 << bitIndex);
+            }
+        }
+        return msg;
+    }
+    dotProduct(a, b) {
+        let result = new Array(this.N).fill(0n);
+        for (let i = 0; i < this.K; i++) {
+            const prod = this.polyMul(a[i], b[i]);
+            result = this.polyAdd(result, prod);
+        }
+        return result;
+    }
+    async generate() {
+        const rho = window.crypto.getRandomValues(new Uint8Array(32));
+        const sigma = window.crypto.getRandomValues(new Uint8Array(32));
+        // 公開行列A
+        const A = [];
+        for (let i = 0; i < this.K; i++) {
+            A[i] = [];
+            for (let j = 0; j < this.K; j++) {
+                A[i][j] = await this.sampleUniform(rho, i, j);
+            }
+        }
+        // 秘密ベクトルs
+        const s = [];
+        for (let i = 0; i < this.K; i++) {
+            const randomBytes = await this.prf(sigma, i, Math.ceil((this.N * Number(this.ETA1) * 2) / 8));
+            s[i] = this.sampleCBD(this.ETA1, randomBytes);
+        }
+        // ノイズe
+        const e = [];
+        for (let i = 0; i < this.K; i++) {
+            const randomBytes = await this.prf(sigma, this.K + i, Math.ceil((this.N * Number(this.ETA1) * 2) / 8));
+            e[i] = this.sampleCBD(this.ETA1, randomBytes);
+        }
+        // t = A*s + e
+        const t = [];
+        for (let i = 0; i < this.K; i++) {
+            let sum = new Array(this.N).fill(0n);
+            for (let j = 0; j < this.K; j++) {
+                const prod = this.polyMul(A[i][j], s[j]);
+                sum = this.polyAdd(sum, prod);
+            }
+            t[i] = this.polyAdd(sum, e[i]);
+        }
+        // 公開鍵のエンコード
+        const pkBytes = new Uint8Array(32 + this.K * (this.N * 12) / 8);
+        pkBytes.set(rho, 0);
+        let offset = 32;
+        for (let i = 0; i < this.K; i++) {
+            const encoded = this.encodePoly(t[i]);
+            pkBytes.set(encoded, offset);
+            offset += encoded.length;
+        }
+        return {
+            publicKey: pkBytes,
+            secretKey: s,
+            rho: rho
+        };
+    }
+    async encapsulate(publicKey) {
+        const rho = publicKey.slice(0, 32);
+        const t = [];
+        let offset = 32;
+        const polySize = (this.N * 12) / 8;
+        // 公開鍵のデコード
+        for (let i = 0; i < this.K; i++) {
+            const polyBytes = publicKey.slice(offset, offset + polySize);
+            t[i] = this.decodePoly(polyBytes);
+            offset += polySize;
+        }
+        // 行列Aの再生成
+        const A = [];
+        for (let i = 0; i < this.K; i++) {
+            A[i] = [];
+            for (let j = 0; j < this.K; j++) {
+                A[i][j] = await this.sampleUniform(rho, i, j);
+            }
+        }
+        // メッセージ（共有秘密）
+        const m = window.crypto.getRandomValues(new Uint8Array(32));
+        // ランダムネス
+        const coins = window.crypto.getRandomValues(new Uint8Array(32));
+        // ランダムベクトルr
+        const r = [];
+        for (let i = 0; i < this.K; i++) {
+            const randomBytes = await this.prf(coins, i, Math.ceil((this.N * Number(this.ETA1) * 2) / 8));
+            r[i] = this.sampleCBD(this.ETA1, randomBytes);
+        }
+        // ノイズe1
+        const e1 = [];
+        for (let i = 0; i < this.K; i++) {
+            const randomBytes = await this.prf(coins, this.K + i, Math.ceil((this.N * Number(this.ETA2) * 2) / 8));
+            e1[i] = this.sampleCBD(this.ETA2, randomBytes);
+        }
+        // ノイズe2
+        const randomBytes2 = await this.prf(coins, 2 * this.K, Math.ceil((this.N * Number(this.ETA2) * 2) / 8));
+        const e2 = this.sampleCBD(this.ETA2, randomBytes2);
+        // u = A^T * r + e1
+        const u = [];
+        for (let i = 0; i < this.K; i++) {
+            let sum = new Array(this.N).fill(0n);
+            for (let j = 0; j < this.K; j++) {
+                const prod = this.polyMul(A[j][i], r[j]); // 転置
+                sum = this.polyAdd(sum, prod);
+            }
+            u[i] = this.polyAdd(sum, e1[i]);
+        }
+        // v = t^T * r + e2 + encode(m)
+        const tr = this.dotProduct(t, r);
+        const mp = this.encodeMessage(m);
+        let v = this.polyAdd(tr, e2);
+        v = this.polyAdd(v, mp);
+        // 暗号文のエンコード
+        const ctBytes = new Uint8Array(this.K * polySize + polySize);
+        offset = 0;
+        for (let i = 0; i < this.K; i++) {
+            const encoded = this.encodePoly(u[i]);
+            ctBytes.set(encoded, offset);
+            offset += encoded.length;
+        }
+        const vEncoded = this.encodePoly(v);
+        ctBytes.set(vEncoded, offset);
+        return {
+            ciphertext: ctBytes,
+            sharedSecret: m
+        };
+    }
+    async quickDerive(secretKey, ciphertext) {
+        const polySize = (this.N * 12) / 8;
+        // 暗号文のデコード
+        const u = [];
+        let offset = 0;
+        for (let i = 0; i < this.K; i++) {
+            const polyBytes = ciphertext.slice(offset, offset + polySize);
+            u[i] = this.decodePoly(polyBytes);
+            offset += polySize;
+        }
+        const vBytes = ciphertext.slice(offset, offset + polySize);
+        const v = this.decodePoly(vBytes);
+        // m' = v - s^T * u
+        const su = this.dotProduct(secretKey, u);
+        const mp = this.polySub(v, su);
+        // メッセージのデコード
+        const m = this.decodeMessage(mp);
+        return m;
+    }
+}
+export class AES {
     constructor() { }
     /**
-     * Key Generation (Server Side)
-     * Generates a secret vector 's' and public vector 'b' using a seeded matrix 'A'.
+     * Encrypt: (string, Uint8Array) => Base64String
      */
-    async generateKeyPair() {
-        const seedA = window.crypto.getRandomValues(new Uint8Array(32));
-        const s = new BigInt64Array(this.N);
-        const randomBuf = new Uint16Array(this.N);
-        window.crypto.getRandomValues(randomBuf);
-        for (let i = 0; i < this.N; i++)
-            s[i] = BigInt(randomBuf[i]) % this.Q;
-        const A = await this.expandA(seedA);
-        const b = new BigInt64Array(this.N);
-        for (let i = 0; i < this.N; i++) {
-            let sum = 0n;
-            for (let j = 0; j < this.N; j++) {
-                sum = (sum + A[i][j] * s[j]) % this.Q;
-            }
-            b[i] = (sum + this.getNoise()) % this.Q;
-        }
-        return { seedA, b, s, N: this.N, Q: this.Q };
+    async encrypt(plaintext, keyBuffer) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(plaintext);
+        // 1. 毎回生の鍵(Uint8Array)をインポートする
+        const cryptoKey = await window.crypto.subtle.importKey("raw", keyBuffer.buffer, { name: "AES-GCM" }, false, ["encrypt"]);
+        // 2. IV（初期化ベクトル）を生成
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        // 3. 暗号化
+        const encrypted = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, cryptoKey, data);
+        // 4. [IV(12) + Ciphertext] のバイナリを作成
+        const result = new Uint8Array(iv.length + encrypted.byteLength);
+        result.set(iv, 0);
+        result.set(new Uint8Array(encrypted), iv.length);
+        // 5. Base64文字列にして返す
+        return btoa(String.fromCharCode(...result));
     }
     /**
-     * Encapsulation (Client Side)
-     * Uses the public seed and vector 'b' to encrypt a 256-bit secret.
+     * Decrypt: (Base64String, Uint8Array) => string
      */
-    async encapsulate(seedA, b) {
-        const A = await this.expandA(seedA);
-        const s_partner = new BigInt64Array(this.N);
-        const randomBuf = new Uint16Array(this.N);
-        window.crypto.getRandomValues(randomBuf);
-        for (let i = 0; i < this.N; i++)
-            s_partner[i] = BigInt(randomBuf[i] % 2);
-        const secret_bits = new BigInt64Array(256);
-        const bitBuf = new Uint8Array(256);
-        window.crypto.getRandomValues(bitBuf);
-        for (let i = 0; i < 256; i++)
-            secret_bits[i] = BigInt(bitBuf[i] % 2);
-        const u = new BigInt64Array(this.N);
-        for (let j = 0; j < this.N; j++) {
-            let sum = 0n;
-            for (let i = 0; i < this.N; i++)
-                sum = (sum + A[i][j] * s_partner[i]) % this.Q;
-            u[j] = (sum + this.getNoise()) % this.Q;
+    async decrypt(base64Cipher, keyBuffer) {
+        // 1. Base64からバイナリに戻す
+        const binaryStr = atob(base64Cipher);
+        const packet = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++)
+            packet[i] = binaryStr.charCodeAt(i);
+        // 2. 鍵のインポート
+        const cryptoKey = await window.crypto.subtle.importKey("raw", keyBuffer.buffer, { name: "AES-GCM" }, false, ["decrypt"]);
+        // 3. IVと暗号文を分離
+        const iv = packet.slice(0, 12);
+        const ciphertext = packet.slice(12);
+        // 4. 復号
+        try {
+            const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, cryptoKey, ciphertext);
+            return new TextDecoder().decode(decrypted);
         }
-        const v = new BigInt64Array(256);
-        for (let i = 0; i < 256; i++) {
-            let sum = 0n;
-            for (let j = 0; j < this.N; j++)
-                sum = (sum + b[j] * s_partner[j]) % this.Q;
-            v[i] = (sum + this.getNoise() + (secret_bits[i] * (this.Q / 2n))) % this.Q;
+        catch (e) {
+            throw new Error("Decryption failed. Invalid key or corrupted data.");
         }
-        return { u, v, secret_bits };
-    }
-    /**
-     * Decapsulation / Key Derivation (Server Side)
-     * Recovers the shared secret bits using the private vector 's'.
-     */
-    deriveSharedKey(s, u, v) {
-        const bits = new BigInt64Array(256);
-        for (let i = 0; i < 256; i++) {
-            let s_u = 0n;
-            for (let j = 0; j < this.N; j++)
-                s_u = (s_u + s[j] * u[j]) % this.Q;
-            let mu_raw = (v[i] - s_u) % this.Q;
-            if (mu_raw < 0n)
-                mu_raw += this.Q;
-            bits[i] = (mu_raw > this.Q / 4n && mu_raw < (3n * this.Q) / 4n) ? 1n : 0n;
-        }
-        return this.bitsToBuffer(bits);
-    }
-    async expandA(seed) {
-        const A = [];
-        for (let i = 0; i < this.N; i++) {
-            const row = [];
-            const hashBuffer = await window.crypto.subtle.digest('SHA-256', new Uint8Array([...seed, i & 0xff, (i >> 8) & 0xff]));
-            const hashArray = new Uint16Array(hashBuffer);
-            for (let j = 0; j < this.N; j++)
-                row.push(BigInt(hashArray[j % hashArray.length]) % this.Q);
-            A.push(row);
-        }
-        return A;
-    }
-    getNoise() {
-        const val = new Uint8Array(1);
-        window.crypto.getRandomValues(val);
-        return BigInt(val[0] % 3) - 1n;
-    }
-    bitsToBuffer(bits) {
-        const buf = new Uint8Array(32);
-        for (let i = 0; i < 256; i++) {
-            if (bits[i] === 1n)
-                buf[Math.floor(i / 8)] |= (1 << (7 - (i % 8)));
-        }
-        return buf;
     }
 }
