@@ -537,12 +537,13 @@ export class RSA {
     barrettReduce(x, mod, mu, shift) {
         const q = (x * mu) >> shift;
         let r = x - q * mod;
-        while (r >= mod) {
+        // 数学的に2回以内の引き算で必ず mod 未満になる
+        if (r >= mod)
             r -= mod;
-        }
-        while (r < 0n) {
-            r += mod;
-        }
+        if (r >= mod)
+            r -= mod;
+        // xが負にならない前提なら、ここも不要になる
+        // if (r < 0n) r += mod; 
         return r;
     }
     montgomeryModExpUltra(base, exp, mod, mu, shift) {

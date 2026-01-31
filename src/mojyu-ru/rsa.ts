@@ -852,7 +852,7 @@ private async decryptParallel(
     );
   }
 
-  private barrettReduce(
+private barrettReduce(
     x: bigint,
     mod: bigint,
     mu: bigint,
@@ -861,16 +861,15 @@ private async decryptParallel(
     const q = (x * mu) >> shift;
     let r = x - q * mod;
 
-    while (r >= mod) {
-      r -= mod;
-    }
-    while (r < 0n) {
-      r += mod;
-    }
+    // 数学的に2回以内の引き算で必ず mod 未満になる
+    if (r >= mod) r -= mod;
+    if (r >= mod) r -= mod;
+
+    // xが負にならない前提なら、ここも不要になる
+    // if (r < 0n) r += mod; 
 
     return r;
   }
-
   private montgomeryModExpUltra(
     base: bigint,
     exp: bigint,
