@@ -840,9 +840,23 @@ private async decryptParallel(
     if (r === 0n) return 0n;
 
     // 16回の2乗 + 1回の乗算 = 2^16 + 1 = 65537
-    for (let i = 0; i < 16; i++) {
       r = this.barrettReduce(r * r, mod, mu, shift);
-    }
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+      r = this.barrettReduce(r * r, mod, mu, shift);
+
 
     return this.barrettReduce(
       r * this.barrettReduce(base, mod, mu, shift),
