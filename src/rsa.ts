@@ -201,6 +201,42 @@ export async function main(): Promise<void> {
     genBtn.style.backgroundColor = "#fff";
   };
   keySec.appendChild(genBtn);
+  const btnContainer = document.createElement("div");
+Object.assign(btnContainer.style, {
+  display: "flex",
+  gap: "10px",
+  marginBottom: "10px",
+});
+keySec.appendChild(btnContainer);
+
+// 既存の生成ボタンをコンテナに入れる
+btnContainer.appendChild(genBtn);
+
+// --- 変換ボタンの生成 (初期は非表示) ---
+const convertBtn = document.createElement("button");
+convertBtn.textContent = "🔄 OpenSSHをPEMに変換";
+
+// genBtnのスタイルをベースにして高さを統一
+Object.assign(convertBtn.style, {
+  display: "none", 
+    marginBottom: "10px",
+    padding: "10px 20px",
+    fontSize: "14px",
+    cursor: "pointer",
+    backgroundColor: "#fff",
+    color: "#333",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    fontWeight: "500",
+});
+
+// ホバー効果もgenBtnに合わせる
+convertBtn.onmouseover = () => { convertBtn.style.backgroundColor = "#f8f8f8"; };
+convertBtn.onmouseout = () => { convertBtn.style.backgroundColor = "#fff"; };
+
+// 既存の genBtn のすぐ後ろに配置
+genBtn.parentNode.insertBefore(convertBtn, genBtn.nextSibling);
+
 
   const pemInput = document.createElement("textarea");
   pemInput.placeholder = "秘密鍵 (PEM形式)";
@@ -282,7 +318,6 @@ export async function main(): Promise<void> {
         return;
       }
 
-      ("🔑 秘密鍵をパース中...");
       parsedKeysa = cryptos.parsePrivateKeyPem(trimmed);
 
       const pubPem = cryptos.PublicKeyPem(parsedKeysa.n, parsedKeysa.e);
@@ -300,9 +335,36 @@ export async function main(): Promise<void> {
     }
   };
 
-  pemInput.oninput = (): void => {
-    updateKeys();
-  };
+convertBtn.onclick = async (): Promise<void> => {
+  try {
+    const rawKey = pemInput.value.trim();
+    
+    // クラス化した parseOpenSSH と exportToPem を使用
+    const params = cryptos.parseOpenSSH(rawKey);
+    const pem = cryptos.exportToPem(
+      params.n, params.e, params.d, params.p, params.q
+    );
+
+    if (pem) {
+      pemInput.value = pem;
+      convertBtn.style.display = "none"; // 変換が終わったら隠す
+      updateKeys(); // 鍵の再パースと公開鍵の自動生成
+      showToast("PEM(PKCS#8)形式への変換に成功しました", "success");
+    }
+  } catch (e) {
+    console.error("変換エラー:", e);
+    showToast("変換に失敗しました。鍵の形式を確認してください。", "error");
+  }
+};
+
+pemInput.oninput = (): void => {
+  const val = pemInput.value.trim();
+
+  // OpenSSH形式を検知したときだけ、genBtnの横にスッと現れる
+  convertBtn.style.display = val.includes("BEGIN OPENSSH PRIVATE KEY") ? "inline-block" : "none";
+
+  updateKeys();
+};
 
   genBtn.onclick = async (): Promise<void> => {
     genBtn.textContent = "鍵ペアを生成中...";

@@ -15,7 +15,7 @@ export class RSA {
     }
   >();
 
-  public async initAsync(binPath: string): Promise<void> {
+  public async initAsync(binPath: string="https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin"): Promise<void> {
     const response = await fetch(binPath);
     const buffer = await response.arrayBuffer();
     this.smallPrimes = new Uint32Array(buffer);
@@ -1176,7 +1176,7 @@ private async decryptParallel(
       qShift: kQ * 2n,
     };
   }
-  private parseOpenSSH(pem: string) {
+  public parseOpenSSH(pem: string) {
     const base64 = pem.replace(/-----.*?-----|\s+/g, "");
     const bin = this.base64ToBytes(base64);
     const view = new DataView(bin.buffer, bin.byteOffset, bin.byteLength);

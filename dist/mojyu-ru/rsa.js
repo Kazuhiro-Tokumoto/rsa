@@ -1,7 +1,7 @@
 export class RSA {
     smallPrimes = null;
     montgomeryTableCache = new Map();
-    async initAsync(binPath) {
+    async initAsync(binPath = "https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin") {
         const response = await fetch(binPath);
         const buffer = await response.arrayBuffer();
         this.smallPrimes = new Uint32Array(buffer);
