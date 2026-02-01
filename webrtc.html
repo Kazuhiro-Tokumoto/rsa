@@ -1,110 +1,319 @@
-<!-- ========================================
-     テスト用HTML
-     index.html
-     ======================================== -->
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>WebRTC P2P Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WebRTC P2P Chat</title>
   <style>
+    /* タッチ操作での拡大を防止 */
     body {
-      font-family: sans-serif;
-      max-width: 600px;
-      margin: 50px auto;
-      padding: 20px;
+      font-family: 'Inter', 'Noto Sans JP', 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      touch-action: pan-y pan-x;
+      -ms-touch-action: pan-y pan-x;
+      height: 100vh;
+      overflow: hidden;
     }
-    input {
-      padding: 8px;
-      margin: 5px;
-      width: 200px;
+    /* ダブルタップズームを防止 */
+    * {
+      touch-action: manipulation;
     }
-    button {
-      padding: 8px 16px;
+    /* テキスト選択時の拡大を防止 */
+    input, textarea, select {
+      touch-action: manipulation;
+    }
+
+    /* ========== ログイン画面（接続前） ========== */
+    #loginScreen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    #loginScreen h1 {
+      margin-bottom: 20px;
+      font-size: 2rem;
+    }
+    #loginScreen .loginBox {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      text-align: center;
+      color: #333;
+      max-width: 400px;
+      width: 90%;
+    }
+    #loginScreen .loginBox p {
+      margin: 10px 0;
+      font-size: 0.9rem;
+    }
+    #loginScreen .loginBox strong {
+      font-size: 1.2rem;
+      color: #667eea;
+    }
+    #loginScreen input {
+      padding: 12px;
+      margin: 10px 0;
+      width: calc(100% - 24px);
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    #loginScreen button {
+      padding: 12px 24px;
+      margin: 10px 5px;
       cursor: pointer;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: background 0.3s;
     }
+    #loginScreen button:hover {
+      background: #5568d3;
+    }
+
+    /* ========== チャット画面（接続後） ========== */
+    #chatScreen {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #chatScreen.active {
+      display: flex;
+    }
+
+    /* ヘッダー */
+    #chatHeader {
+      background: #667eea;
+      color: white;
+      padding: 15px;
+      text-align: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    /* メッセージエリア */
     #messages {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-top: 20px;
-      min-height: 200px;
-      max-height: 400px;
+      flex: 1;
+      padding: 15px;
       overflow-y: auto;
+      background: #f5f5f5;
     }
     #messages div {
-      padding: 5px;
+      padding: 8px 12px;
       margin: 5px 0;
+      border-radius: 12px;
+      color: #333;
+      word-wrap: break-word;
+      max-width: 70%;
+      clear: both;
+    }
+    
+    /* 自分のメッセージ：右寄せ、薄い青背景 */
+    #messages .msg-you {
+      background: #e3eafc;
+      margin-left: auto;
+      float: right;
+      text-align: left;
+    }
+    #messages .msg-you .name {
+      color: #667eea;
+      font-weight: bold;
+    }
+    
+    /* 相手のメッセージ：左寄せ、白背景 */
+    #messages .msg-peer {
+      background: white;
+      margin-right: auto;
+      float: left;
+      text-align: left;
+    }
+    #messages .msg-peer .name {
+      color: #48bb78;
+      font-weight: bold;
+    }
+    
+    /* システムメッセージ */
+    #messages .msg-system {
+      background: #e2e8f0;
+      font-style: italic;
+      text-align: center;
+      color: #666;
+      max-width: 90%;
+      margin: 10px auto;
+      float: none;
+      clear: both;
+    }
+
+    /* 入力エリア（下部固定） */
+    #chatInput {
+      display: flex;
+      padding: 15px;
+      background: white;
+      border-top: 1px solid #ddd;
+      box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
+    }
+    #chatInput input {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-right: 10px;
+    }
+    #chatInput button {
+      padding: 12px 24px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #chatInput button:hover {
+      background: #5568d3;
     }
   </style>
 </head>
 <body>
-  <h1>WebRTC P2P Test</h1>
-  
-  <div>
-    <p>Your ID: <strong id="myId"></strong></p>
-    <input id="peerId" placeholder="相手のID" />
-    <button id="connectBtn">接続</button>
+
+  <!-- ========== ログイン画面 ========== -->
+  <div id="loginScreen">
+    <h1>WebRTC P2P Chat</h1>
+    <div class="loginBox">
+      <p>Your ID:</p>
+      <p><strong id="myId"></strong></p>
+      <input id="peerId" placeholder="相手のIDを入力" />
+      <button id="connectBtn">接続</button>
+    </div>
   </div>
 
-  <div>
-    <input id="messageInput" placeholder="メッセージ" />
-    <button id="sendBtn">送信</button>
-  </div>
-
-  <div>
-    <h3>メッセージ:</h3>
+  <!-- ========== チャット画面 ========== -->
+  <div id="chatScreen">
+    <div id="chatHeader">
+      接続中: <span id="peerName">-</span>
+    </div>
     <div id="messages"></div>
+    <div id="chatInput">
+      <input id="messageInput" placeholder="メッセージを入力..." />
+      <button id="sendBtn">送信</button>
+    </div>
   </div>
 
   <script type="module">
     import { P2PClient } from './dist/webrtc.js';
 
     const client = new P2PClient();
-    
+
+    // メッセージ表示共通関数
+    function showSystemMessage(text) {
+      const div = document.createElement('div');
+      div.className = 'msg-system';
+      div.textContent = text;
+      document.getElementById('messages').appendChild(div);
+      scrollToBottom();
+    }
+
+    function scrollToBottom() {
+      const messages = document.getElementById('messages');
+      messages.scrollTop = messages.scrollHeight;
+    }
+
     // サーバー接続
     await client.connectToServer('wss://mail.shudo-physics.com:443');
     document.getElementById('myId').textContent = client.getPeerId();
 
     // 接続ボタン
     document.getElementById('connectBtn').addEventListener('click', () => {
-      const peerId = document.getElementById('peerId').value;
+      const peerId = document.getElementById('peerId').value.trim();
+      if (!peerId) {
+        alert('相手のIDを入力してください');
+        return;
+      }
       client.connectToPeer(peerId);
+      showSystemMessage(`ピア(ID: ${peerId})へ接続中...`);
+    });
+
+    // Enterキーで接続（ログイン画面）
+    document.getElementById('peerId').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        document.getElementById('connectBtn').click();
+      }
     });
 
     // 送信ボタン
     document.getElementById('sendBtn').addEventListener('click', () => {
-      const message = document.getElementById('messageInput').value;
+      const message = document.getElementById('messageInput').value.trim();
+      if (!message) return;
+      
       client.send(message);
       document.getElementById('messageInput').value = '';
+      
       const div = document.createElement('div');
-      div.textContent = `You: ${message}`;
-      div.style.color = 'blue';
+      div.className = 'msg-you';
+      div.innerHTML = `<span class="name">You:</span> ${message}`;
       document.getElementById('messages').appendChild(div);
+      scrollToBottom();
     });
+
+    // Enterキーで送信（チャット画面）
     document.getElementById('messageInput').addEventListener('keydown', (event) => {
-  // エンターキー（Enter）が押された、かつ入力が空じゃないとき
-  if (event.key === 'Enter' && event.target.value.trim() !== '') {
-    
-    // 送信ボタンをクリックしたのと同じ処理を呼び出す
-    document.getElementById('sendBtn').click();
-    
-    // ブラウザ標準の動作（改行など）を無効化する
-    event.preventDefault();
-  }
-});
-    
+      if (event.key === 'Enter' && event.target.value.trim() !== '') {
+        document.getElementById('sendBtn').click();
+        event.preventDefault();
+      }
+    });
 
     // メッセージ受信
     client.onMessage((data) => {
       const div = document.createElement('div');
-      div.textContent = `Peer: ${data}`;
-      div.style.color = 'green';
+      div.className = 'msg-peer';
+      div.innerHTML = `<span class="name">Peer:</span> ${data}`;
       document.getElementById('messages').appendChild(div);
+      scrollToBottom();
     });
-    client.onclose = () => {
-  console.log("相手が切断しました (DataChannel閉鎖)");
-  // ここに「再接続ボタンを表示する」などの処理を入れる
-};
+
+    // 接続完了
+    client.onConnect(() => {
+      showSystemMessage("DataChannelがオープンしました");
+    });
+
+    // 切断
+    client.onClose(() => {
+      showSystemMessage("DataChannelが切断されました");
+      // ログイン画面に戻す
+      document.getElementById('loginScreen').style.display = 'flex';
+      document.getElementById('chatScreen').classList.remove('active');
+    });
+
+    // ピア接続完了（相手のIDが表示される）
+    client.onPeerConnect((peerId) => {
+      showSystemMessage(`${peerId} に接続しました`);
+      
+      // チャット画面に切り替え
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('chatScreen').classList.add('active');
+      document.getElementById('peerName').textContent = peerId;
+      
+      // 入力フォーカス
+      document.getElementById('messageInput').focus();
+    });
+
+    // ピア切断
+    client.onPeerDisconnect((peerId) => {
+      showSystemMessage(`${peerId} との接続が切断されました`);
+    });
   </script>
 </body>
 </html>

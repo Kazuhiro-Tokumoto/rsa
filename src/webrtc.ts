@@ -8,8 +8,15 @@ export class P2PClient {
   private signalingSocket: WebSocket | null = null;
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
+  private remotePeerId: string | null = null;
+  private isDisconnected: boolean = false; // 切断フラグ追加
+
+  // コールバック
   private onMessageCallback: ((data: string) => void) | null = null;
-  
+  private onConnectCallback: (() => void) | null = null;
+  private onCloseCallback: (() => void) | null = null;
+  private onPeerConnectedCallback: ((peerId: string) => void) | null = null;
+  private onPeerDisconnectedCallback: ((peerId: string) => void) | null = null;
 
   constructor(peerId?: string) {
     this.peerId = peerId || this.generateId();
@@ -44,6 +51,8 @@ export class P2PClient {
   // 相手に接続（Offer側）
   async connectToPeer(targetPeerId: string) {
     console.log(`[Client] Connecting to peer: ${targetPeerId}`);
+    this.remotePeerId = targetPeerId;
+    this.isDisconnected = false; // リセット
 
     this.peerConnection = new RTCPeerConnection({
       iceServers: [
@@ -51,6 +60,9 @@ export class P2PClient {
         { urls: "stun:stun1.l.google.com:19302" }
       ]
     });
+
+    // 接続状態の監視を追加
+    this.setupConnectionMonitoring(this.peerConnection);
 
     // DataChannel作成
     this.dataChannel = this.peerConnection.createDataChannel("chat");
@@ -106,12 +118,17 @@ export class P2PClient {
   // Offerを受信（Answer側）
   private async handleOffer(data: any) {
     console.log("[Client] Received offer from:", data.from);
+    this.remotePeerId = data.from;
+    this.isDisconnected = false; // リセット
 
     this.peerConnection = new RTCPeerConnection({
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" }
       ]
     });
+
+    // 接続状態の監視を追加
+    this.setupConnectionMonitoring(this.peerConnection);
 
     // DataChannelを受信
     this.peerConnection.ondatachannel = (event) => {
@@ -163,14 +180,73 @@ export class P2PClient {
     }
   }
 
+  // 接続状態の監視（切断検知を強化）
+  private setupConnectionMonitoring(pc: RTCPeerConnection) {
+    pc.onconnectionstatechange = () => {
+      console.log("[Client] Connection state:", pc.connectionState);
+      
+      if (pc.connectionState === "disconnected" || 
+          pc.connectionState === "failed" || 
+          pc.connectionState === "closed") {
+        console.log("[Client] Peer connection closed/failed");
+        this.handleDisconnection();
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log("[Client] ICE connection state:", pc.iceConnectionState);
+      
+      if (pc.iceConnectionState === "disconnected" || 
+          pc.iceConnectionState === "failed" || 
+          pc.iceConnectionState === "closed") {
+        console.log("[Client] ICE connection closed/failed");
+        this.handleDisconnection();
+      }
+    };
+  }
+
+  // 切断処理をまとめる（一度だけ実行）
+  private handleDisconnection() {
+    if (this.isDisconnected) {
+      console.log("[Client] Already disconnected, skipping");
+      return;
+    }
+    
+    this.isDisconnected = true;
+    console.log("[Client] Handling disconnection");
+    
+    const peerId = this.remotePeerId;
+    
+    // 切断コールバック
+    if (this.onCloseCallback) {
+      this.onCloseCallback();
+    }
+    
+    // ピア切断コールバック
+    if (this.onPeerDisconnectedCallback && peerId) {
+      this.onPeerDisconnectedCallback(peerId);
+    }
+  }
+
   // DataChannelセットアップ
   private setupDataChannel(channel: RTCDataChannel) {
     channel.onopen = () => {
       console.log("[Client] DataChannel opened!");
+      
+      // 接続完了コールバック
+      if (this.onConnectCallback) {
+        this.onConnectCallback();
+      }
+      
+      // ピア接続コールバック（相手のIDを渡す）
+      if (this.onPeerConnectedCallback && this.remotePeerId) {
+        this.onPeerConnectedCallback(this.remotePeerId);
+      }
     };
 
     channel.onclose = () => {
       console.log("[Client] DataChannel closed");
+      this.handleDisconnection();
     };
 
     channel.onmessage = (event) => {
@@ -195,10 +271,38 @@ export class P2PClient {
     }
   }
 
-  // メッセージ受信コールバック
+  // ========================================
+  // コールバック登録メソッド
+  // ========================================
+
+  // メッセージ受信
   onMessage(callback: (data: string) => void) {
     this.onMessageCallback = callback;
   }
+
+  // DataChannel接続完了
+  onConnect(callback: () => void) {
+    this.onConnectCallback = callback;
+  }
+
+  // DataChannel切断
+  onClose(callback: () => void) {
+    this.onCloseCallback = callback;
+  }
+
+  // ピア接続完了（相手のIDが渡される）
+  onPeerConnect(callback: (peerId: string) => void) {
+    this.onPeerConnectedCallback = callback;
+  }
+
+  // ピア切断（相手のIDが渡される）
+  onPeerDisconnect(callback: (peerId: string) => void) {
+    this.onPeerDisconnectedCallback = callback;
+  }
+
+  // ========================================
+  // ユーティリティ
+  // ========================================
 
   // ピアリスト取得
   requestPeerList() {
@@ -206,8 +310,8 @@ export class P2PClient {
       this.signalingSocket.send(JSON.stringify({ type: "list-peers" }));
     }
   }
-  
 
+  // 自分のIDを取得
   getPeerId(): string {
     return this.peerId;
   }
