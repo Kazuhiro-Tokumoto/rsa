@@ -1092,7 +1092,7 @@ private barrettReduce(
       const b2 = this.barrettReduce(b * b, mod, mu, shift);
       return this.barrettReduce(b2 * b, mod, mu, shift);
     }
-
+    
     return this.montgomeryModExpUltra(base, exp, mod, mu, shift);
   }
 
