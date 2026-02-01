@@ -1,0 +1,99 @@
+<!-- ========================================
+     テスト用HTML
+     index.html
+     ======================================== -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WebRTC P2P Test</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    input {
+      padding: 8px;
+      margin: 5px;
+      width: 200px;
+    }
+    button {
+      padding: 8px 16px;
+      cursor: pointer;
+    }
+    #messages {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 20px;
+      min-height: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    #messages div {
+      padding: 5px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebRTC P2P Test</h1>
+  
+  <div>
+    <p>Your ID: <strong id="myId"></strong></p>
+    <input id="peerId" placeholder="相手のID" />
+    <button id="connectBtn">接続</button>
+  </div>
+
+  <div>
+    <input id="messageInput" placeholder="メッセージ" />
+    <button id="sendBtn">送信</button>
+  </div>
+
+  <div>
+    <h3>メッセージ:</h3>
+    <div id="messages"></div>
+  </div>
+
+  <script type="module">
+    import { P2PClient } from './dist/webrtc.js';
+
+    const client = new P2PClient();
+    
+    // サーバー接続
+    await client.connectToServer('wss://mail.shudo-physics.com:443');
+    document.getElementById('myId').textContent = client.getPeerId();
+
+    // 接続ボタン
+    document.getElementById('connectBtn').addEventListener('click', () => {
+      const peerId = document.getElementById('peerId').value;
+      client.connectToPeer(peerId);
+    });
+
+    // 送信ボタン
+    document.getElementById('sendBtn').addEventListener('click', () => {
+      const message = document.getElementById('messageInput').value;
+      client.send(message);
+      document.getElementById('messageInput').value = '';
+      
+      const div = document.createElement('div');
+      div.textContent = `You: ${message}`;
+      div.style.color = 'blue';
+      document.getElementById('messages').appendChild(div);
+    });
+
+    // メッセージ受信
+    client.onMessage((data) => {
+      const div = document.createElement('div');
+      div.textContent = `Peer: ${data}`;
+      div.style.color = 'green';
+      document.getElementById('messages').appendChild(div);
+    });
+    client.onclose = () => {
+  console.log("相手が切断しました (DataChannel閉鎖)");
+  // ここに「再接続ボタンを表示する」などの処理を入れる
+};
+  </script>
+</body>
+</html>
