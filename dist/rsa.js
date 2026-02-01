@@ -1,4 +1,4 @@
-import { RSA, LatticeKEM } from "./mojyu-ru/crypto.js";
+import { RSA, LatticeKEM, AES } from "./mojyu-ru/crypto.js";
 import { createHeader } from "./header.js";
 const header = createHeader("ブラウザ上で動作するRSA暗号ツール", "", false);
 document.body.prepend(header);
@@ -101,166 +101,29 @@ function showToast(message, type = "success") {
 // メイン関数
 // ============================================================
 export async function main() {
-    /**
-     * 完全スタンドアロン版デモ
-     */
-    async function runIntegratedDemo() {
-        console.log("=".repeat(60));
-        console.log("🔐 Lattice-based KEM (Kyber-style) デモンストレーション");
-        console.log("=".repeat(60));
-        const lwm = new LatticeKEM();
-        /**
-         * 1. 【受信側: マイン】
-         * 鍵ペア生成: 公開鍵 + 秘密鍵
-         */
-        console.log("\n【ステップ1: 鍵生成】");
-        console.log("📡 [マイン] 鍵ペアを生成中...");
-        const { publicKey, secretKey, rho } = await lwm.generate();
-        console.log(`✅ 公開鍵サイズ: ${publicKey.length} バイト`);
-        console.log(`✅ 秘密鍵: ${secretKey.length}個の多項式ベクトル`);
-        console.log(`🔍 デバッグ: 秘密鍵の最初の要素数: ${secretKey[0].length}`);
-        // 公開鍵をBase64エンコード
-        const publicKeyBase64 = btoa(String.fromCharCode(...publicKey));
-        console.log(`📤 公開鍵（Base64）: ${publicKeyBase64.substring(0, 60)}...`);
-        console.log(`   (全長: ${publicKeyBase64.length} 文字)`);
-        /**
-         * 2. 【送信側: 相手】
-         * 公開鍵を使ってカプセル化 → 共有秘密を生成
-         */
-        console.log("\n【ステップ2: カプセル化（暗号化）】");
-        console.log("🔐 [相手] マインの公開鍵を使って共有秘密を生成中...");
-        // 公開鍵をデコード（実際の通信をシミュレート）
-        const receivedPublicKeyBinary = atob(publicKeyBase64);
-        const receivedPublicKey = new Uint8Array(receivedPublicKeyBinary.length);
-        for (let i = 0; i < receivedPublicKeyBinary.length; i++) {
-            receivedPublicKey[i] = receivedPublicKeyBinary.charCodeAt(i);
-        }
-        console.log(`🔍 デバッグ: 受信した公開鍵サイズ: ${receivedPublicKey.length} バイト`);
-        console.log(`🔍 デバッグ: 元の公開鍵と一致: ${publicKey.length === receivedPublicKey.length}`);
-        // カプセル化
-        const { ciphertext, sharedSecret: keyPartner } = await lwm.encapsulate(receivedPublicKey);
-        console.log(`✅ 暗号文サイズ: ${ciphertext.length} バイト`);
-        console.log(`✅ 共有秘密（相手側）: ${keyPartner.length} バイト`);
-        console.log(`🔍 デバッグ: 共有秘密の先頭4バイト: ${Array.from(keyPartner.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
-        // 暗号文をBase64エンコード
-        const ciphertextBase64 = btoa(String.fromCharCode(...ciphertext));
-        console.log(`📤 暗号文（Base64）: ${ciphertextBase64.substring(0, 60)}...`);
-        console.log(`   (全長: ${ciphertextBase64.length} 文字)`);
-        /**
-         * 3. 【受信側: マイン】
-         * 秘密鍵を使って復号化 → 共有秘密を復元
-         */
-        console.log("\n【ステップ3: 復号化（鍵導出）】");
-        console.log("🔓 [マイン] 暗号文から共有秘密を復元中...");
-        // 暗号文をデコード（実際の通信をシミュレート）
-        const receivedCiphertextBinary = atob(ciphertextBase64);
-        const receivedCiphertext = new Uint8Array(receivedCiphertextBinary.length);
-        for (let i = 0; i < receivedCiphertextBinary.length; i++) {
-            receivedCiphertext[i] = receivedCiphertextBinary.charCodeAt(i);
-        }
-        console.log(`🔍 デバッグ: 暗号文サイズ確認: ${receivedCiphertext.length} バイト`);
-        // 復号化
-        try {
-            const keyMine = await lwm.quickDerive(secretKey, receivedCiphertext);
-            console.log(`✅ 共有秘密（マイン側）: ${keyMine.length} バイト`);
-            console.log(`🔍 デバッグ: 復元鍵の先頭4バイト: ${Array.from(keyMine.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
-            /**
-             * 4. 鍵の一致確認
-             */
-            console.log("\n【ステップ4: 鍵の検証】");
-            const toHex = (buf) => Array.from(buf)
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join(' ');
-            const hexMine = toHex(keyMine);
-            const hexPartner = toHex(keyPartner);
-            console.log("🔑 [マイン側の鍵]:");
-            console.log("   " + hexMine);
-            console.log("🔑 [相手側の鍵]:");
-            console.log("   " + hexPartner);
-            // バイトごとの比較
-            console.log("\n🔍 バイトごとの比較（最初の10バイト）:");
-            for (let i = 0; i < Math.min(10, keyMine.length); i++) {
-                const match = keyMine[i] === keyPartner[i] ? "✓" : "✗";
-                console.log(`   [${i}] マイン: ${keyMine[i].toString(16).padStart(2, '0')}, 相手: ${keyPartner[i].toString(16).padStart(2, '0')} ${match}`);
-            }
-            const isMatch = hexMine === hexPartner;
-            console.log("\n" + "=".repeat(60));
-            if (isMatch) {
-                console.log("✅✅✅ 鍵交換成功！両者が同じ共有秘密を持っています！");
-            }
-            else {
-                console.log("❌❌❌ 鍵交換失敗：鍵が一致しません");
-                // 不一致の詳細分析
-                let firstDiff = -1;
-                for (let i = 0; i < keyMine.length; i++) {
-                    if (keyMine[i] !== keyPartner[i]) {
-                        firstDiff = i;
-                        break;
-                    }
-                }
-                console.log(`🔍 最初の不一致位置: ${firstDiff === -1 ? 'なし（長さ違い？）' : `バイト ${firstDiff}`}`);
-            }
-            console.log("=".repeat(60));
-            /**
-             * 5. AES暗号化通信のデモ（オプション）
-             */
-            if (isMatch) {
-                console.log("\n【ステップ5: AES暗号化通信】");
-                const plaintext = "格子暗号（Lattice-based KEM）による鍵交換が成功しました！🎉";
-                console.log(`📝 平文: "${plaintext}"`);
-                // AESが利用可能な場合のみ実行
-                if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
-                    try {
-                        // AES-GCMで暗号化
-                        const iv = window.crypto.getRandomValues(new Uint8Array(12));
-                        const key = await window.crypto.subtle.importKey('raw', keyPartner, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-                        const encoder = new TextEncoder();
-                        const data = encoder.encode(plaintext);
-                        const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, data);
-                        const encryptedArray = new Uint8Array(encrypted);
-                        const encryptedBase64 = btoa(String.fromCharCode(...encryptedArray));
-                        console.log(`🔐 暗号文: ${encryptedBase64.substring(0, 60)}...`);
-                        // 復号化
-                        const keyDecrypt = await window.crypto.subtle.importKey('raw', keyMine.buffer, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-                        const decrypted = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, keyDecrypt, encrypted);
-                        const decoder = new TextDecoder();
-                        const decryptedText = decoder.decode(decrypted);
-                        console.log(`📖 復号文: "${decryptedText}"`);
-                        if (plaintext === decryptedText) {
-                            console.log("✅ AES通信成功：メッセージが正しく復号されました！");
-                        }
-                    }
-                    catch (e) {
-                        console.log("⚠️ AES暗号化テストをスキップ");
-                    }
-                }
-            }
-            /**
-             * 6. セキュリティ情報の表示
-             */
-            console.log("\n【セキュリティパラメータ】");
-            console.log(`📊 多項式次数 (N): 256`);
-            console.log(`📊 モジュラス (Q): 3329`);
-            console.log(`📊 モジュール次元 (K): 2`);
-            console.log(`📊 ノイズ分布 (η₁/η₂): 2/2`);
-            console.log(`🛡️  量子コンピュータ耐性: あり（格子問題の困難性に基づく）`);
-            console.log(`🛡️  安全性レベル: NIST Level 1相当`);
-            console.log("\n" + "=".repeat(60));
-            console.log("🎓 文化祭デモ用のポイント:");
-            console.log("  ・RSA: 大きな数の素因数分解の困難性");
-            console.log("  ・格子暗号: 格子上の最短ベクトル問題の困難性");
-            console.log("  ・量子コンピュータが実用化されてもRSAは破られるが、");
-            console.log("    格子暗号は破られない（耐量子計算機暗号）");
-            console.log("=".repeat(60));
-        }
-        catch (error) {
-            console.error("❌ 復号化中にエラー:", error);
-            console.error(error.stack);
-        }
-    }
-    // 実行
-    runIntegratedDemo().catch(console.error);
-    // 文化祭用の統計表示を追加
+    const lwn = new LatticeKEM();
+    const keys = await lwn.gen();
+    const pubKey = keys.publicKey;
+    const secKey = keys.secretKey;
+    const rho = keys.rho;
+    const encResult = await lwn.enc(pubKey);
+    console.log(pubKey);
+    const cipher = encResult.ciphertext;
+    const sharedSecretEnc = encResult.sharedSecret;
+    const sharedSecretDec = await lwn.qd(secKey, cipher);
+    console.log("共有秘密の一致:", sharedSecretEnc.toString() === sharedSecretDec.toString());
+    console.log("共有秘密 (暗号化側):", sharedSecretEnc);
+    console.log("共有秘密 (復号化側):", sharedSecretDec);
+    const aes = new AES();
+    const aesKey = sharedSecretEnc;
+    const aeskey2 = sharedSecretDec;
+    const plaintext = "こんにちは、世界！This is a test message for AES encryption.";
+    const encrypted = await aes.encrypt(plaintext, aesKey);
+    const decrypted = await aes.decrypt(encrypted, aeskey2);
+    console.log("AES暗号化前:", plaintext);
+    console.log("AES暗号化後:", encrypted);
+    console.log("AES復号化後:", decrypted);
+    console.log("復号化成功:", plaintext === decrypted);
     // 既存のRSAアプリを削除（二重実行防止）
     const existingApp = document.getElementById("rsa-app");
     if (existingApp) {

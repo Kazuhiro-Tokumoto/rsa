@@ -3,8 +3,8 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "jsx": "react-jsx",          /* 【必須】Reactの書き方を許可する */
-    "lib": ["ESNext", "DOM", "DOM.Iterable"], /* Reactの型定義に必要 */
+    "jsx": "react-jsx",       
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["node"],
 
     "strict": false,
@@ -14,13 +14,13 @@
 
     "rootDir": "./src",
     "outDir": "./dist",
-    "noEmit": false,              /* 【重要】Viteがビルドするのでtscはファイルを出さない */
-    "allowImportingTsExtensions": false, /* .ts を直接 import している場合のエラー防止 */
+    "noEmit": false,        
+    "allowImportingTsExtensions": false, 
   },
     "include": [
     "src/**/*"
   ],
   "exclude": [
-    "src/mojyu-ru/*-worker.ts"  // ← Worker ファイルを除外
+    "src/mojyu-ru/*-worker.ts"  
   ]
 }
