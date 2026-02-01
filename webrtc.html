@@ -76,12 +76,23 @@
       const message = document.getElementById('messageInput').value;
       client.send(message);
       document.getElementById('messageInput').value = '';
-      
       const div = document.createElement('div');
       div.textContent = `You: ${message}`;
       div.style.color = 'blue';
       document.getElementById('messages').appendChild(div);
     });
+    document.getElementById('messageInput').addEventListener('keydown', (event) => {
+  // エンターキー（Enter）が押された、かつ入力が空じゃないとき
+  if (event.key === 'Enter' && event.target.value.trim() !== '') {
+    
+    // 送信ボタンをクリックしたのと同じ処理を呼び出す
+    document.getElementById('sendBtn').click();
+    
+    // ブラウザ標準の動作（改行など）を無効化する
+    event.preventDefault();
+  }
+});
+    
 
     // メッセージ受信
     client.onMessage((data) => {
