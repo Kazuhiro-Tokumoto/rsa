@@ -135,11 +135,20 @@ export class P2PClient {
     this.remotePeerId = data.from;
     this.isDisconnected = false;
 
-    this.peerConnection = new RTCPeerConnection({
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" }
-      ]
-    });
+this.peerConnection = new RTCPeerConnection({
+  iceServers: [
+    // STUN
+    { 
+      urls: "stun:mail.shudo-physics.com:3478"
+    },
+    // TURN
+    {
+      urls: "turn:mail.shudo-physics.com:3478",
+      username: "testuser",
+      credential: "password"
+    }
+  ]
+});
 
     this.setupConnectionMonitoring(this.peerConnection);
 

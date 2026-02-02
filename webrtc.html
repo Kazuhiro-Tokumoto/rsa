@@ -34,6 +34,7 @@
       height: 100vh;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
+      overflow-y: auto;
     }
     #loginScreen h1 {
       margin-bottom: 20px;
@@ -48,6 +49,7 @@
       color: #333;
       max-width: 400px;
       width: 90%;
+      margin: 20px;
     }
     #loginScreen .loginBox p {
       margin: 10px 0;
@@ -79,6 +81,104 @@
     }
     #loginScreen button:hover {
       background: #5568d3;
+    }
+    
+    /* QRコード表示ボタン */
+    #showQrBtn {
+      background: #48bb78;
+      margin-top: 10px;
+    }
+    #showQrBtn:hover {
+      background: #38a169;
+    }
+    
+    /* ========== モーダル（QRコード表示） ========== */
+    #qrModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    #qrModal.show {
+      display: flex;
+    }
+    
+    #qrModalContent {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      position: relative;
+      animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    @keyframes modalSlideIn {
+      from {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    #qrModalContent h2 {
+      margin: 0 0 20px 0;
+      color: #667eea;
+      font-size: 1.5rem;
+    }
+    
+    #closeQrBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #e53e3e;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    #closeQrBtn:hover {
+      background: #c53030;
+    }
+    
+    #qrcode {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      display: inline-block;
+      margin: 20px 0;
+    }
+    
+    #shareLink {
+      margin-top: 15px;
+      padding: 12px;
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      word-break: break-all;
+      font-size: 0.85rem;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    #shareLink:hover {
+      background: #edf2f7;
+      border-color: #667eea;
     }
 
     /* ========== チャット画面（接続後） ========== */
@@ -206,6 +306,18 @@
       <p><strong id="myId"></strong></p>
       <input id="peerId" placeholder="相手のIDを入力" />
       <button id="connectBtn">接続</button>
+      <button id="showQrBtn">QRコードを表示したい場合はこちら</button>
+    </div>
+  </div>
+
+  <!-- ========== QRコードモーダル ========== -->
+  <div id="qrModal">
+    <div id="qrModalContent">
+      <button id="closeQrBtn">×</button>
+      <h2>QRどえす</h2>
+      <p style="color: #666; font-size: 0.9rem;">相手にこのQRコードを読み取ってもらってください</p>
+      <div id="qrcode"></div>
+      <div id="shareLink" title="クリックでコピー">リンクをコピー</div>
     </div>
   </div>
 
@@ -221,6 +333,9 @@
       <button id="sendBtn">送信</button>
     </div>
   </div>
+
+  <!-- QRコード生成ライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <script type="module">
     import { P2PClient } from './dist/webrtc.js';
@@ -243,7 +358,75 @@
 
     // サーバー接続
     await client.connectToServer('wss://mail.shudo-physics.com:443');
-    document.getElementById('myId').textContent = client.getPeerId();
+    const myId = client.getPeerId();
+    document.getElementById('myId').textContent = myId;
+
+    // URL生成
+    const currentUrl = window.location.href.split('?')[0];
+    const shareUrl = `${currentUrl}?who=${myId}`;
+    
+    // QRコード生成（初回のみ）
+    let qrGenerated = false;
+    function generateQR() {
+      if (!qrGenerated) {
+        new QRCode(document.getElementById('qrcode'), {
+          text: shareUrl,
+          width: 200,
+          height: 200,
+          colorDark: '#667eea',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        qrGenerated = true;
+      }
+    }
+
+    // 共有リンク表示とコピー機能
+    const shareLinkElement = document.getElementById('shareLink');
+    shareLinkElement.textContent = shareUrl;
+    shareLinkElement.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        const originalText = shareLinkElement.textContent;
+        shareLinkElement.textContent = '✅ コピーしました！';
+        shareLinkElement.style.background = '#48bb78';
+        shareLinkElement.style.color = 'white';
+        
+        setTimeout(() => {
+          shareLinkElement.textContent = originalText;
+          shareLinkElement.style.background = '#f7fafc';
+          shareLinkElement.style.color = '#333';
+        }, 2000);
+      } catch (err) {
+        alert('コピーに失敗しました: ' + err);
+      }
+    });
+
+    // QRコード表示ボタン
+    document.getElementById('showQrBtn').addEventListener('click', () => {
+      generateQR();
+      document.getElementById('qrModal').classList.add('show');
+    });
+
+    // QRコードモーダル閉じる
+    document.getElementById('closeQrBtn').addEventListener('click', () => {
+      document.getElementById('qrModal').classList.remove('show');
+    });
+
+    // モーダル背景クリックで閉じる
+    document.getElementById('qrModal').addEventListener('click', (e) => {
+      if (e.target.id === 'qrModal') {
+        document.getElementById('qrModal').classList.remove('show');
+      }
+    });
+
+    // URLパラメータから相手のIDを取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetPeerId = urlParams.get('who');
+    
+    if (targetPeerId && targetPeerId !== myId) {
+      document.getElementById('peerId').value = targetPeerId;
+    }
 
     // 接続ボタン
     document.getElementById('connectBtn').addEventListener('click', () => {
@@ -252,6 +435,13 @@
         alert('相手のIDを入力してください');
         return;
       }
+      
+      // 自己接続チェック
+      if (peerId === myId) {
+        alert('自分自身には接続できません');
+        return;
+      }
+      
       client.connectToPeer(peerId);
       showSystemMessage(`ピア(ID: ${peerId})へ接続中...`);
     });
@@ -310,22 +500,17 @@
     // 切断
     client.onClose(() => {
       showSystemMessage("DataChannelが切断されました");
-      // ログイン画面に戻す
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('chatScreen').classList.remove('active');
       document.getElementById('encryptionStatus').textContent = '暗号化状態:すっげぇ異常';
     });
 
-    // ピア接続完了（相手のIDが表示される）
+    // ピア接続完了
     client.onPeerConnect((peerId) => {
       showSystemMessage(`${peerId} に接続しました`);
-      
-      // チャット画面に切り替え
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('chatScreen').classList.add('active');
       document.getElementById('peerName').textContent = peerId;
-      
-      // 入力フォーカス
       document.getElementById('messageInput').focus();
     });
 
