@@ -201,14 +201,207 @@
       font-size: 1.1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    #chatHeader .left {
+      flex: 1;
+      text-align: left;
+    }
+    
+    #chatHeader .center {
+      flex: 2;
+      display: flex;
       justify-content: center;
       align-items: center;
       gap: 10px;
     }
     
+    #chatHeader .right {
+      flex: 1;
+      text-align: right;
+    }
+    
     #encryptionStatus {
-      font-size: 1.2rem;
+      font-size: 0.9rem;
       transition: all 0.3s ease;
+    }
+    
+    /* 音声通話ボタン（右上） */
+    #voiceCallBtn {
+      background: #48bb78;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    #voiceCallBtn:hover {
+      background: #38a169;
+      transform: scale(1.05);
+    }
+    #voiceCallBtn.calling {
+      background: #e53e3e;
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* ========== 通話リクエストモーダル ========== */
+    #callRequestModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+    #callRequestModal.show {
+      display: flex;
+    }
+    
+    #callRequestContent {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+      animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    #callRequestContent h2 {
+      margin: 0 0 20px 0;
+      color: #333;
+      font-size: 1.5rem;
+    }
+    
+    #callRequestContent p {
+      color: #666;
+      margin: 10px 0 30px 0;
+      font-size: 1.1rem;
+    }
+    
+    .callRequestButtons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+    
+    .callRequestButtons button {
+      padding: 15px 30px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    #acceptCallBtn {
+      background: #48bb78;
+      color: white;
+    }
+    #acceptCallBtn:hover {
+      background: #38a169;
+      transform: scale(1.05);
+    }
+    
+    #rejectCallBtn {
+      background: #e53e3e;
+      color: white;
+    }
+    #rejectCallBtn:hover {
+      background: #c53030;
+      transform: scale(1.05);
+    }
+
+    /* ========== 通話画面 ========== */
+    #voiceCallScreen {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    #voiceCallScreen.active {
+      display: flex;
+    }
+    
+    .callInfo {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    
+    .callInfo h2 {
+      font-size: 2rem;
+      margin: 0 0 10px 0;
+    }
+    
+    .callInfo p {
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+    
+    .callTimer {
+      font-size: 3rem;
+      font-weight: bold;
+      margin: 30px 0;
+    }
+    
+    .callControls {
+      display: flex;
+      gap: 30px;
+    }
+    
+    .callControlBtn {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      font-size: 2rem;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .callControlBtn:hover {
+      transform: scale(1.1);
+    }
+    
+    #muteBtn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+    #muteBtn.muted {
+      background: #e53e3e;
+    }
+    
+    #endCallBtn {
+      background: #e53e3e;
+      color: white;
+    }
+    #endCallBtn:hover {
+      background: #c53030;
     }
 
     /* メッセージエリア */
@@ -306,7 +499,7 @@
       <p><strong id="myId"></strong></p>
       <input id="peerId" placeholder="相手のIDを入力" />
       <button id="connectBtn">接続</button>
-      <button id="showQrBtn">QRコードを表示したい場合はこちら</button>
+      <button id="showQrBtn">QRコードを表示</button>
     </div>
   </div>
 
@@ -314,18 +507,37 @@
   <div id="qrModal">
     <div id="qrModalContent">
       <button id="closeQrBtn">×</button>
-      <h2>QRどえす</h2>
+      <h2>QRコードで共有</h2>
       <p style="color: #666; font-size: 0.9rem;">相手にこのQRコードを読み取ってもらってください</p>
       <div id="qrcode"></div>
       <div id="shareLink" title="クリックでコピー">リンクをコピー</div>
     </div>
   </div>
 
-  <!-- ========== チャット画面 ========== -->
+  <!-- ========== 通話リクエストモーダル ========== -->
+  <div id="callRequestModal">
+    <div id="callRequestContent">
+      <h2>通話リクエスト</h2>
+      <p><strong id="callerName"></strong> が音声通話を開始しようとしています</p>
+      <div class="callRequestButtons">
+        <button id="acceptCallBtn">応答</button>
+        <button id="rejectCallBtn">拒否</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== チャット画面（接続後） ========== -->
   <div id="chatScreen">
     <div id="chatHeader">
-      <span>接続中: <span id="peerName">-</span></span>
-      <span id="encryptionStatus" title="暗号化状態">暗号化状態:すっげぇ異常</span>
+      <div class="left">
+        <span>接続中: <span id="peerName">-</span></span>
+      </div>
+      <div class="center">
+        <span id="encryptionStatus" title="暗号化状態">暗号化状態:すっげぇ異常</span>
+      </div>
+      <div class="right">
+        <button id="voiceCallBtn">🎤 通話</button>
+      </div>
     </div>
     <div id="messages"></div>
     <div id="chatInput">
@@ -334,6 +546,22 @@
     </div>
   </div>
 
+  <!-- ========== 通話画面 ========== -->
+  <div id="voiceCallScreen">
+    <div class="callInfo">
+      <h2 id="callPeerName">相手の名前</h2>
+      <p>音声通話中</p>
+    </div>
+    <div class="callTimer" id="callTimer">00:00</div>
+    <div class="callControls">
+      <button class="callControlBtn" id="muteBtn" title="ミュート">🎤</button>
+      <button class="callControlBtn" id="endCallBtn" title="通話終了">📞</button>
+    </div>
+  </div>
+
+  <!-- リモート音声再生用（非表示） -->
+  <audio id="remoteAudio" autoplay></audio>
+
   <!-- QRコード生成ライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -341,6 +569,9 @@
     import { P2PClient } from './dist/webrtc.js';
 
     const client = new P2PClient();
+    let callStartTime = null;
+    let callTimerInterval = null;
+    let isMuted = false;
 
     // メッセージ表示共通関数
     function showSystemMessage(text) {
@@ -354,6 +585,18 @@
     function scrollToBottom() {
       const messages = document.getElementById('messages');
       messages.scrollTop = messages.scrollHeight;
+    }
+
+    // 通話タイマー更新
+    function updateCallTimer() {
+      if (!callStartTime) return;
+      
+      const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      
+      document.getElementById('callTimer').textContent = 
+        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
     // サーバー接続
@@ -388,7 +631,7 @@
       try {
         await navigator.clipboard.writeText(shareUrl);
         const originalText = shareLinkElement.textContent;
-        shareLinkElement.textContent = '✅ コピーしました！';
+        shareLinkElement.textContent = 'コピーしました！';
         shareLinkElement.style.background = '#48bb78';
         shareLinkElement.style.color = 'white';
         
@@ -438,7 +681,7 @@
       
       // 自己接続チェック
       if (peerId === myId) {
-        alert('自分自身には接続できません');
+        alert('自分自身には接続できません！');
         return;
       }
       
@@ -451,6 +694,97 @@
       if (event.key === 'Enter') {
         document.getElementById('connectBtn').click();
       }
+    });
+
+    // ========== 音声通話機能 ==========
+    
+    // 通話ボタン
+    document.getElementById('voiceCallBtn').addEventListener('click', async () => {
+      // 通話リクエスト送信
+      await client.send(JSON.stringify({
+        type: 'call-request',
+        from: myId
+      }));
+      
+      showSystemMessage('通話リクエストを送信しました...');
+    });
+
+    // 通話応答
+    document.getElementById('acceptCallBtn').addEventListener('click', async () => {
+      document.getElementById('callRequestModal').classList.remove('show');
+      
+      try {
+        await client.startAudioCall();
+        
+        // 通話画面に切り替え
+        document.getElementById('chatScreen').classList.remove('active');
+        document.getElementById('voiceCallScreen').classList.add('active');
+        document.getElementById('callPeerName').textContent = document.getElementById('peerName').textContent;
+        
+        // タイマー開始
+        callStartTime = Date.now();
+        callTimerInterval = setInterval(updateCallTimer, 1000);
+        
+        // 応答メッセージ送信
+        await client.send(JSON.stringify({
+          type: 'call-accepted'
+        }));
+        
+        showSystemMessage('通話を開始しました');
+      } catch (error) {
+        alert('マイクのアクセス許可が必要です');
+        console.error(error);
+      }
+    });
+
+    // 通話拒否
+    document.getElementById('rejectCallBtn').addEventListener('click', async () => {
+      document.getElementById('callRequestModal').classList.remove('show');
+      
+      await client.send(JSON.stringify({
+        type: 'call-rejected'
+      }));
+      
+      showSystemMessage('通話を拒否しました');
+    });
+
+    // ミュートボタン
+    document.getElementById('muteBtn').addEventListener('click', () => {
+      isMuted = !isMuted;
+      client.muteMicrophone(isMuted);
+      
+      const muteBtn = document.getElementById('muteBtn');
+      if (isMuted) {
+        muteBtn.textContent = '🔇';
+        muteBtn.classList.add('muted');
+      } else {
+        muteBtn.textContent = '🎤';
+        muteBtn.classList.remove('muted');
+      }
+    });
+
+    // 通話終了ボタン
+    document.getElementById('endCallBtn').addEventListener('click', async () => {
+      // 通話停止
+      client.stopAudioCall();
+      
+      // タイマー停止
+      if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+      }
+      callStartTime = null;
+      
+      // チャット画面に戻る
+      document.getElementById('voiceCallScreen').classList.remove('active');
+      document.getElementById('chatScreen').classList.add('active');
+      
+      // 通話終了メッセージ送信
+      await client.send(JSON.stringify({
+        type: 'call-ended'
+      }));
+      
+      showSystemMessage('通話を終了しました');
     });
 
     // 送信ボタン
@@ -485,11 +819,69 @@
 
     // メッセージ受信
     client.onMessage((data) => {
+      // JSON判定
+      try {
+        const message = JSON.parse(data);
+        
+        // 通話関連メッセージ処理
+        if (message.type === 'call-request') {
+          document.getElementById('callerName').textContent = message.from;
+          document.getElementById('callRequestModal').classList.add('show');
+          return;
+        }
+        
+        if (message.type === 'call-accepted') {
+          // 通話画面に切り替え
+          document.getElementById('chatScreen').classList.remove('active');
+          document.getElementById('voiceCallScreen').classList.add('active');
+          document.getElementById('callPeerName').textContent = document.getElementById('peerName').textContent;
+          
+          // タイマー開始
+          callStartTime = Date.now();
+          callTimerInterval = setInterval(updateCallTimer, 1000);
+          
+          showSystemMessage('相手が応答しました');
+          return;
+        }
+        
+        if (message.type === 'call-rejected') {
+          showSystemMessage('相手が通話を拒否しました');
+          return;
+        }
+        
+        if (message.type === 'call-ended') {
+          // 通話停止
+          client.stopAudioCall();
+          
+          // タイマー停止
+          if (callTimerInterval) {
+            clearInterval(callTimerInterval);
+            callTimerInterval = null;
+          }
+          callStartTime = null;
+          
+          // チャット画面に戻る
+          document.getElementById('voiceCallScreen').classList.remove('active');
+          document.getElementById('chatScreen').classList.add('active');
+          
+          showSystemMessage('相手が通話を終了しました');
+          return;
+        }
+      } catch (e) {
+        // 通常のテキストメッセージ
+      }
+      
       const div = document.createElement('div');
       div.className = 'msg-peer';
       div.innerHTML = `<span class="name">Peer:</span> ${escapeHtml(data)}`;
       document.getElementById('messages').appendChild(div);
       scrollToBottom();
+    });
+
+    // リモートストリーム受信
+    client.onRemoteStream((stream) => {
+      console.log('audiook');
+      document.getElementById('remoteAudio').srcObject = stream;
     });
 
     // 接続完了
@@ -502,6 +894,7 @@
       showSystemMessage("DataChannelが切断されました");
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('chatScreen').classList.remove('active');
+      document.getElementById('voiceCallScreen').classList.remove('active');
       document.getElementById('encryptionStatus').textContent = '暗号化状態:すっげぇ異常';
     });
 

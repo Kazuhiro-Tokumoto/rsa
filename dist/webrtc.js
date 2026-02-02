@@ -1,5 +1,5 @@
 // ========================================
-// クライアント側（暗号化通信対応版）
+// クライアント側（暗号化通信+音声通話対応版・完全版）
 // webrtc.ts
 // ========================================
 import { LatticeKEM } from './mojyu-ru/crypto.js';
@@ -19,6 +19,10 @@ export class P2PClient {
     myRho = null;
     sharedSecret = null;
     isEncrypted = false;
+    // 音声通話関連
+    localStream = null;
+    remoteStream = null;
+    isAudioEnabled = false;
     // コールバック
     onMessageCallback = null;
     onConnectCallback = null;
@@ -26,13 +30,19 @@ export class P2PClient {
     onPeerConnectedCallback = null;
     onPeerDisconnectedCallback = null;
     onEncryptionEstablishedCallback = null;
+    onRemoteStreamCallback = null;
     constructor(peerId) {
         this.peerId = peerId || this.generateId();
         this.latticeKEM = new LatticeKEM();
         this.aes = new AES();
     }
     generateId() {
-        return Math.random().toString(36).substring(2, 15);
+        // UUID v4風のランダムID生成
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     }
     // シグナリングサーバーに接続
     async connectToServer(serverUrl) {
@@ -54,6 +64,11 @@ export class P2PClient {
     }
     // 相手に接続（Offer側）
     async connectToPeer(targetPeerId) {
+        // 自己接続チェック
+        if (targetPeerId === this.peerId) {
+            console.error('[Client] ❌ Cannot connect to yourself!');
+            throw new Error('自分自身には接続できません');
+        }
         console.log(`[Client] Connecting to peer: ${targetPeerId}`);
         this.remotePeerId = targetPeerId;
         this.isDisconnected = false;
@@ -63,10 +78,14 @@ export class P2PClient {
                 { urls: "stun:stun1.l.google.com:19302" }
             ]
         });
+        // 音声トラックを準備（ミュート状態）
+        await this.prepareAudioTrack();
         this.setupConnectionMonitoring(this.peerConnection);
         // DataChannel作成
         this.dataChannel = this.peerConnection.createDataChannel("chat");
         this.setupDataChannel(this.dataChannel);
+        // リモートトラック受信設定
+        this.setupTrackReceiver(this.peerConnection);
         // ICE候補
         this.peerConnection.onicecandidate = (event) => {
             if (event.candidate && this.signalingSocket) {
@@ -113,24 +132,19 @@ export class P2PClient {
         this.isDisconnected = false;
         this.peerConnection = new RTCPeerConnection({
             iceServers: [
-                // STUN
-                {
-                    urls: "stun:mail.shudo-physics.com:3478"
-                },
-                // TURN
-                {
-                    urls: "turn:mail.shudo-physics.com:3478",
-                    username: "testuser",
-                    credential: "password"
-                }
+                { urls: "stun:stun.l.google.com:19302" }
             ]
         });
+        // 音声トラックを準備（ミュート状態）
+        await this.prepareAudioTrack();
         this.setupConnectionMonitoring(this.peerConnection);
         // DataChannelを受信
         this.peerConnection.ondatachannel = (event) => {
             this.dataChannel = event.channel;
             this.setupDataChannel(this.dataChannel);
         };
+        // リモートトラック受信設定
+        this.setupTrackReceiver(this.peerConnection);
         // ICE候補
         this.peerConnection.onicecandidate = (event) => {
             if (event.candidate && this.signalingSocket) {
@@ -190,6 +204,19 @@ export class P2PClient {
             }
         };
     }
+    // リモートトラック受信設定
+    setupTrackReceiver(pc) {
+        pc.ontrack = (event) => {
+            console.log('[Client] Received remote track:', event.track.kind);
+            if (!this.remoteStream) {
+                this.remoteStream = new MediaStream();
+            }
+            this.remoteStream.addTrack(event.track);
+            if (this.onRemoteStreamCallback) {
+                this.onRemoteStreamCallback(this.remoteStream);
+            }
+        };
+    }
     // 切断処理
     handleDisconnection() {
         if (this.isDisconnected) {
@@ -198,6 +225,8 @@ export class P2PClient {
         }
         this.isDisconnected = true;
         console.log("[Client] Handling disconnection");
+        // 音声停止
+        this.stopAudioCall();
         // 暗号化状態をリセット
         this.isEncrypted = false;
         this.sharedSecret = null;
@@ -219,12 +248,10 @@ export class P2PClient {
             // ID比較して若い方が公開鍵を送信
             if (this.remotePeerId && this.shouldInitiateKeyExchange(this.peerId, this.remotePeerId)) {
                 console.log("[Client] Initiating key exchange (smaller ID)");
-                console.log(this.peerId, this.remotePeerId);
                 await this.initiateKeyExchange();
             }
             else {
                 console.log("[Client] Waiting for public key (larger ID)");
-                console.log(this.peerId, this.remotePeerId);
             }
             if (this.onConnectCallback) {
                 this.onConnectCallback();
@@ -259,7 +286,6 @@ export class P2PClient {
         this.myRho = keyPair.rho;
         // 公開鍵を送信
         const publicKeyBase64 = btoa(String.fromCharCode(...this.myPublicKey));
-        console.log(publicKeyBase64);
         this.sendRaw(JSON.stringify({
             type: "public-key",
             publicKey: publicKeyBase64
@@ -344,10 +370,8 @@ export class P2PClient {
             console.error("[Client] Cannot decrypt: no shared secret");
             return;
         }
-        console.log("暗号文", ciphertextBase64);
         try {
             const plaintext = await this.aes.decrypt(ciphertextBase64, this.sharedSecret);
-            console.log("平文", plaintext);
             console.log("[Client] Decrypted message");
             if (this.onMessageCallback) {
                 this.onMessageCallback(plaintext);
@@ -370,7 +394,6 @@ export class P2PClient {
                 type: "encrypted-message",
                 ciphertext: ciphertext
             }));
-            console.log(ciphertext);
             console.log("[Client] Sent encrypted message");
         }
         else {
@@ -384,6 +407,100 @@ export class P2PClient {
         if (this.dataChannel && this.dataChannel.readyState === "open") {
             this.dataChannel.send(data);
         }
+    }
+    // ========================================
+    // 音声通話機能
+    // ========================================
+    // 音声トラックを準備（ミュート状態）
+    async prepareAudioTrack() {
+        try {
+            // マイク許可取得
+            this.localStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                },
+                video: false
+            });
+            // 最初はミュート状態
+            this.localStream.getAudioTracks().forEach(track => {
+                track.enabled = false;
+            });
+            // PeerConnectionに追加
+            if (this.peerConnection) {
+                this.localStream.getTracks().forEach(track => {
+                    this.peerConnection.addTrack(track, this.localStream);
+                    console.log('[Client] Added muted audio track');
+                });
+            }
+            console.log('[Client] Audio track prepared (muted)');
+        }
+        catch (error) {
+            console.warn('[Client] Could not prepare audio track:', error);
+            // マイク許可がない場合でも接続は続行
+        }
+    }
+    // 音声通話開始（ミュート解除するだけ）
+    async startAudioCall() {
+        if (!this.localStream) {
+            // まだトラックがない場合は作成
+            try {
+                this.localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    },
+                    video: false
+                });
+                // PeerConnectionに追加
+                if (this.peerConnection) {
+                    this.localStream.getTracks().forEach(track => {
+                        this.peerConnection.addTrack(track, this.localStream);
+                        console.log('[Client] Added audio track');
+                    });
+                }
+            }
+            catch (error) {
+                console.error('[Client] Microphone access denied:', error);
+                throw error;
+            }
+        }
+        // ミュート解除
+        if (this.localStream) {
+            this.localStream.getAudioTracks().forEach(track => {
+                track.enabled = true;
+            });
+            this.isAudioEnabled = true;
+            console.log('[Client] Audio call started (unmuted)');
+            return true;
+        }
+        return false;
+    }
+    // 音声通話停止（完全停止）
+    stopAudioCall() {
+        if (this.localStream) {
+            this.localStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            this.localStream = null;
+            this.isAudioEnabled = false;
+            console.log('[Client] Audio call stopped');
+        }
+    }
+    // マイクミュート
+    muteMicrophone(muted) {
+        if (this.localStream) {
+            this.localStream.getAudioTracks().forEach(track => {
+                track.enabled = !muted;
+            });
+            console.log(`[Client] Microphone ${muted ? 'muted' : 'unmuted'}`);
+        }
+    }
+    // 音声状態取得
+    isAudioCallActive() {
+        return this.isAudioEnabled;
     }
     // ========================================
     // コールバック登録メソッド
@@ -405,6 +522,9 @@ export class P2PClient {
     }
     onEncryptionEstablished(callback) {
         this.onEncryptionEstablishedCallback = callback;
+    }
+    onRemoteStream(callback) {
+        this.onRemoteStreamCallback = callback;
     }
     // ========================================
     // ユーティリティ
