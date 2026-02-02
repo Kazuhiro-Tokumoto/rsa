@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WebRTC P2P Chat</title>
+  <link rel="icon" href="data:,">
   <style>
     /* タッチ操作での拡大を防止 */
     body {
@@ -99,6 +100,15 @@
       font-weight: bold;
       font-size: 1.1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    #encryptionStatus {
+      font-size: 1.2rem;
+      transition: all 0.3s ease;
     }
 
     /* メッセージエリア */
@@ -190,7 +200,7 @@
 
   <!-- ========== ログイン画面 ========== -->
   <div id="loginScreen">
-    <h1>WebRTC P2P Chat</h1>
+    <h1>WebRTCをつかったP2PたぶんChat</h1>
     <div class="loginBox">
       <p>Your ID:</p>
       <p><strong id="myId"></strong></p>
@@ -202,7 +212,8 @@
   <!-- ========== チャット画面 ========== -->
   <div id="chatScreen">
     <div id="chatHeader">
-      接続中: <span id="peerName">-</span>
+      <span>接続中: <span id="peerName">-</span></span>
+      <span id="encryptionStatus" title="暗号化状態">暗号化状態:すっげぇ異常</span>
     </div>
     <div id="messages"></div>
     <div id="chatInput">
@@ -253,19 +264,26 @@
     });
 
     // 送信ボタン
-    document.getElementById('sendBtn').addEventListener('click', () => {
+    document.getElementById('sendBtn').addEventListener('click', async () => {
       const message = document.getElementById('messageInput').value.trim();
       if (!message) return;
       
-      client.send(message);
+      await client.send(message);
       document.getElementById('messageInput').value = '';
       
       const div = document.createElement('div');
       div.className = 'msg-you';
-      div.innerHTML = `<span class="name">You:</span> ${message}`;
+      div.innerHTML = `<span class="name">You:</span> ${escapeHtml(message)}`;
       document.getElementById('messages').appendChild(div);
       scrollToBottom();
     });
+
+    // HTMLエスケープ関数
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
     // Enterキーで送信（チャット画面）
     document.getElementById('messageInput').addEventListener('keydown', (event) => {
@@ -279,7 +297,7 @@
     client.onMessage((data) => {
       const div = document.createElement('div');
       div.className = 'msg-peer';
-      div.innerHTML = `<span class="name">Peer:</span> ${data}`;
+      div.innerHTML = `<span class="name">Peer:</span> ${escapeHtml(data)}`;
       document.getElementById('messages').appendChild(div);
       scrollToBottom();
     });
@@ -295,6 +313,7 @@
       // ログイン画面に戻す
       document.getElementById('loginScreen').style.display = 'flex';
       document.getElementById('chatScreen').classList.remove('active');
+      document.getElementById('encryptionStatus').textContent = '暗号化状態:すっげぇ異常';
     });
 
     // ピア接続完了（相手のIDが表示される）
@@ -313,6 +332,12 @@
     // ピア切断
     client.onPeerDisconnect((peerId) => {
       showSystemMessage(`${peerId} との接続が切断されました`);
+    });
+
+    // 暗号化確立
+    client.onEncryptionEstablished(() => {
+      document.getElementById('encryptionStatus').textContent = '暗号化状態:正常';
+      showSystemMessage('暗号化OKどえす!');
     });
   </script>
 </body>

@@ -1,7 +1,10 @@
 // ========================================
-// クライアント側
-// client.ts
+// クライアント側（暗号化通信対応版）
+// webrtc.ts
 // ========================================
+
+import { LatticeKEM } from './mojyu-ru/crypto.js';
+import { AES } from './mojyu-ru/crypto.js';
 
 export class P2PClient {
   private peerId: string;
@@ -9,7 +12,16 @@ export class P2PClient {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private remotePeerId: string | null = null;
-  private isDisconnected: boolean = false; // 切断フラグ追加
+  private isDisconnected: boolean = false;
+
+  // 暗号化関連
+  private latticeKEM: LatticeKEM;
+  private aes: AES;
+  private myPublicKey: Uint8Array | null = null;
+  private mySecretKey: bigint[][] | null = null;
+  private myRho: Uint8Array | null = null;
+  private sharedSecret: Uint8Array | null = null;
+  private isEncrypted: boolean = false;
 
   // コールバック
   private onMessageCallback: ((data: string) => void) | null = null;
@@ -17,9 +29,12 @@ export class P2PClient {
   private onCloseCallback: (() => void) | null = null;
   private onPeerConnectedCallback: ((peerId: string) => void) | null = null;
   private onPeerDisconnectedCallback: ((peerId: string) => void) | null = null;
+  private onEncryptionEstablishedCallback: (() => void) | null = null;
 
   constructor(peerId?: string) {
     this.peerId = peerId || this.generateId();
+    this.latticeKEM = new LatticeKEM();
+    this.aes = new AES();
   }
 
   private generateId(): string {
@@ -52,7 +67,7 @@ export class P2PClient {
   async connectToPeer(targetPeerId: string) {
     console.log(`[Client] Connecting to peer: ${targetPeerId}`);
     this.remotePeerId = targetPeerId;
-    this.isDisconnected = false; // リセット
+    this.isDisconnected = false;
 
     this.peerConnection = new RTCPeerConnection({
       iceServers: [
@@ -61,7 +76,6 @@ export class P2PClient {
       ]
     });
 
-    // 接続状態の監視を追加
     this.setupConnectionMonitoring(this.peerConnection);
 
     // DataChannel作成
@@ -119,7 +133,7 @@ export class P2PClient {
   private async handleOffer(data: any) {
     console.log("[Client] Received offer from:", data.from);
     this.remotePeerId = data.from;
-    this.isDisconnected = false; // リセット
+    this.isDisconnected = false;
 
     this.peerConnection = new RTCPeerConnection({
       iceServers: [
@@ -127,7 +141,6 @@ export class P2PClient {
       ]
     });
 
-    // 接続状態の監視を追加
     this.setupConnectionMonitoring(this.peerConnection);
 
     // DataChannelを受信
@@ -180,7 +193,7 @@ export class P2PClient {
     }
   }
 
-  // 接続状態の監視（切断検知を強化）
+  // 接続状態の監視
   private setupConnectionMonitoring(pc: RTCPeerConnection) {
     pc.onconnectionstatechange = () => {
       console.log("[Client] Connection state:", pc.connectionState);
@@ -205,7 +218,7 @@ export class P2PClient {
     };
   }
 
-  // 切断処理をまとめる（一度だけ実行）
+  // 切断処理
   private handleDisconnection() {
     if (this.isDisconnected) {
       console.log("[Client] Already disconnected, skipping");
@@ -215,14 +228,19 @@ export class P2PClient {
     this.isDisconnected = true;
     console.log("[Client] Handling disconnection");
     
+    // 暗号化状態をリセット
+    this.isEncrypted = false;
+    this.sharedSecret = null;
+    this.myPublicKey = null;
+    this.mySecretKey = null;
+    this.myRho = null;
+    
     const peerId = this.remotePeerId;
     
-    // 切断コールバック
     if (this.onCloseCallback) {
       this.onCloseCallback();
     }
     
-    // ピア切断コールバック
     if (this.onPeerDisconnectedCallback && peerId) {
       this.onPeerDisconnectedCallback(peerId);
     }
@@ -230,15 +248,23 @@ export class P2PClient {
 
   // DataChannelセットアップ
   private setupDataChannel(channel: RTCDataChannel) {
-    channel.onopen = () => {
+    channel.onopen = async () => {
       console.log("[Client] DataChannel opened!");
       
-      // 接続完了コールバック
+      // ID比較して若い方が公開鍵を送信
+      if (this.remotePeerId && this.shouldInitiateKeyExchange(this.peerId, this.remotePeerId)) {
+        console.log("[Client] Initiating key exchange (smaller ID)");
+        console.log(this.peerId, this.remotePeerId);
+        await this.initiateKeyExchange();
+      } else {
+        console.log("[Client] Waiting for public key (larger ID)");
+        console.log(this.peerId, this.remotePeerId);
+      }
+      
       if (this.onConnectCallback) {
         this.onConnectCallback();
       }
       
-      // ピア接続コールバック（相手のIDを渡す）
       if (this.onPeerConnectedCallback && this.remotePeerId) {
         this.onPeerConnectedCallback(this.remotePeerId);
       }
@@ -249,11 +275,9 @@ export class P2PClient {
       this.handleDisconnection();
     };
 
-    channel.onmessage = (event) => {
-      console.log("[Client] Received message:", event.data);
-      if (this.onMessageCallback) {
-        this.onMessageCallback(event.data);
-      }
+    channel.onmessage = async (event) => {
+      console.log("[Client] Received message");
+      await this.handleDataChannelMessage(event.data);
     };
 
     channel.onerror = (error) => {
@@ -261,13 +285,166 @@ export class P2PClient {
     };
   }
 
-  // メッセージ送信
-  send(message: string) {
-    if (this.dataChannel && this.dataChannel.readyState === "open") {
-      this.dataChannel.send(message);
-      console.log("[Client] Sent:", message);
-    } else {
+  // ID比較（小さい方がtrueを返す）
+  private shouldInitiateKeyExchange(myId: string, remoteId: string): boolean {
+    return myId < remoteId;
+  }
+
+  // 鍵交換を開始（小さいIDの側）
+  private async initiateKeyExchange() {
+    console.log("[Client] Generating key pair...");
+    
+    // 鍵ペア生成
+    const keyPair = await this.latticeKEM.gen();
+    this.myPublicKey = keyPair.publicKey;
+    this.mySecretKey = keyPair.secretKey;
+    this.myRho = keyPair.rho;
+    
+    // 公開鍵を送信
+    const publicKeyBase64 = btoa(String.fromCharCode(...this.myPublicKey));
+    console.log(publicKeyBase64);
+    this.sendRaw(JSON.stringify({
+      type: "public-key",
+      publicKey: publicKeyBase64
+    }));
+    
+    console.log("[Client] Public key sent");
+  }
+
+  // DataChannelメッセージ処理
+  private async handleDataChannelMessage(data: string) {
+    try {
+      const message = JSON.parse(data);
+      
+      switch (message.type) {
+        case "public-key":
+          await this.handlePublicKey(message.publicKey);
+          break;
+        
+        case "kem-ciphertext":
+          await this.handleKEMCiphertext(message.ciphertext);
+          break;
+          
+        case "encrypted-message":
+          await this.handleEncryptedMessage(message.ciphertext);
+          break;
+          
+        default:
+          // 通常メッセージ（暗号化前の互換性用）
+          if (this.onMessageCallback) {
+            this.onMessageCallback(data);
+          }
+      }
+    } catch (e) {
+      // JSON parseに失敗 = 通常のテキストメッセージ
+      if (this.onMessageCallback) {
+        this.onMessageCallback(data);
+      }
+    }
+  }
+
+  // 公開鍵を受信（大きいIDの側）
+  private async handlePublicKey(publicKeyBase64: string) {
+    console.log("[Client] Received public key, encapsulating...");
+    
+    // Base64をUint8Arrayに変換
+    const binaryStr = atob(publicKeyBase64);
+    const publicKey = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      publicKey[i] = binaryStr.charCodeAt(i);
+    }
+    
+    // カプセル化（暗号化）
+    const result = await this.latticeKEM.enc(publicKey);
+    this.sharedSecret = result.sharedSecret;
+    
+    // 暗号文を送信
+    const ciphertextBase64 = btoa(String.fromCharCode(...result.ciphertext));
+    this.sendRaw(JSON.stringify({
+      type: "kem-ciphertext",
+      ciphertext: ciphertextBase64
+    }));
+    
+    this.isEncrypted = true;
+    console.log("[Client] Shared secret established (encapsulator)");
+    
+    if (this.onEncryptionEstablishedCallback) {
+      this.onEncryptionEstablishedCallback();
+    }
+  }
+
+  // KEM暗号文を受信（小さいIDの側）
+  private async handleKEMCiphertext(ciphertextBase64: string) {
+    console.log("[Client] Received KEM ciphertext, decapsulating...");
+    
+    // Base64をUint8Arrayに変換
+    const binaryStr = atob(ciphertextBase64);
+    const ciphertext = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      ciphertext[i] = binaryStr.charCodeAt(i);
+    }
+    
+    // デカプセル化（復号）
+    if (!this.mySecretKey) {
+      throw new Error("Secret key not found");
+    }
+    
+    this.sharedSecret = await this.latticeKEM.qd(this.mySecretKey, ciphertext);
+    this.isEncrypted = true;
+    console.log("[Client] Shared secret established (decapsulator)");
+    
+    if (this.onEncryptionEstablishedCallback) {
+      this.onEncryptionEstablishedCallback();
+    }
+  }
+
+  // 暗号化メッセージを受信
+  private async handleEncryptedMessage(ciphertextBase64: string) {
+    if (!this.sharedSecret) {
+      console.error("[Client] Cannot decrypt: no shared secret");
+      return;
+    }
+    console.log("暗号文",ciphertextBase64)
+    try {
+      const plaintext = await this.aes.decrypt(ciphertextBase64, this.sharedSecret);
+      console.log("平文",plaintext)
+      console.log("[Client] Decrypted message");
+      
+      if (this.onMessageCallback) {
+        this.onMessageCallback(plaintext);
+      }
+    } catch (e) {
+      console.error("[Client] Decryption failed:", e);
+    }
+  }
+
+  // メッセージ送信（暗号化対応）
+  async send(message: string) {
+    if (!this.dataChannel || this.dataChannel.readyState !== "open") {
       console.error("[Client] DataChannel not ready");
+      return;
+    }
+    
+    if (this.isEncrypted && this.sharedSecret) {
+      // 暗号化して送信
+      const ciphertext = await this.aes.encrypt(message, this.sharedSecret);
+      this.sendRaw(JSON.stringify({
+        type: "encrypted-message",
+        ciphertext: ciphertext
+      }));
+      console.log(ciphertext)
+      console.log("[Client] Sent encrypted message");
+    } else {
+      // 平文で送信（暗号化未確立）
+      this.sendRaw(message);
+      console.log("[Client] Sent plaintext message");
+    }
+  }
+
+  // 生データ送信（内部用）
+  private sendRaw(data: string) {
+    if (this.dataChannel && this.dataChannel.readyState === "open") {
+      this.dataChannel.send(data);
     }
   }
 
@@ -275,44 +452,46 @@ export class P2PClient {
   // コールバック登録メソッド
   // ========================================
 
-  // メッセージ受信
   onMessage(callback: (data: string) => void) {
     this.onMessageCallback = callback;
   }
 
-  // DataChannel接続完了
   onConnect(callback: () => void) {
     this.onConnectCallback = callback;
   }
 
-  // DataChannel切断
   onClose(callback: () => void) {
     this.onCloseCallback = callback;
   }
 
-  // ピア接続完了（相手のIDが渡される）
   onPeerConnect(callback: (peerId: string) => void) {
     this.onPeerConnectedCallback = callback;
   }
 
-  // ピア切断（相手のIDが渡される）
   onPeerDisconnect(callback: (peerId: string) => void) {
     this.onPeerDisconnectedCallback = callback;
+  }
+
+  onEncryptionEstablished(callback: () => void) {
+    this.onEncryptionEstablishedCallback = callback;
   }
 
   // ========================================
   // ユーティリティ
   // ========================================
 
-  // ピアリスト取得
   requestPeerList() {
     if (this.signalingSocket) {
       this.signalingSocket.send(JSON.stringify({ type: "list-peers" }));
     }
   }
 
-  // 自分のIDを取得
   getPeerId(): string {
     return this.peerId;
+  }
+
+  // 暗号化状態を取得
+  isConnectionEncrypted(): boolean {
+    return this.isEncrypted;
   }
 }
