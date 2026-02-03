@@ -221,6 +221,10 @@
     #chatHeader .right {
       flex: 1;
       text-align: right;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
     }
     
     #encryptionStatus {
@@ -250,6 +254,29 @@
     #voiceCallBtn.calling {
       background: #e53e3e;
       animation: pulse 1.5s infinite;
+    }
+    
+    /* スピーカー切り替えボタン（スマホのみ表示） */
+    #speakerBtn {
+      background: #4299e1;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+      display: none; /* デフォルトは非表示 */
+      align-items: center;
+      gap: 5px;
+    }
+    #speakerBtn:hover {
+      background: #3182ce;
+      transform: scale(1.05);
+    }
+    #speakerBtn.speaker-on {
+      background: #48bb78;
     }
     
     @keyframes pulse {
@@ -536,6 +563,7 @@
         <span id="encryptionStatus" title="暗号化状態">暗号化状態:すっげぇ異常</span>
       </div>
       <div class="right">
+        <button id="speakerBtn">🔊 スピーカー</button>
         <button id="voiceCallBtn">🎤 通話</button>
       </div>
     </div>
@@ -572,6 +600,12 @@
     let callStartTime = null;
     let callTimerInterval = null;
     let isMuted = false;
+    let isSpeakerMode = true; // スマホではデフォルトでスピーカーモード
+
+    // スマートフォン判定
+    function isMobileDevice() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
 
     // メッセージ表示共通関数
     function showSystemMessage(text) {
@@ -599,10 +633,24 @@
         `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
+    // マイク初期化（一度ミュート→解除）
+    function initializeMicrophone() {
+      client.muteMicrophone(true);
+      setTimeout(() => {
+        client.muteMicrophone(false);
+        console.log('[Init] Microphone initialized');
+      }, 100);
+    }
+
     // サーバー接続
     await client.connectToServer('wss://mail.shudo-physics.com:443');
     const myId = client.getPeerId();
     document.getElementById('myId').textContent = myId;
+
+    // スマホの場合のみスピーカーボタンを表示
+    if (isMobileDevice()) {
+      document.getElementById('speakerBtn').style.display = 'flex';
+    }
 
     // URL生成
     const currentUrl = window.location.href.split('?')[0];
@@ -716,6 +764,9 @@
       try {
         await client.startAudioCall();
         
+        // マイク初期化
+        initializeMicrophone();
+        
         // 通話画面に切り替え
         document.getElementById('chatScreen').classList.remove('active');
         document.getElementById('voiceCallScreen').classList.add('active');
@@ -753,6 +804,8 @@
       isMuted = !isMuted;
       client.muteMicrophone(isMuted);
       
+      console.log('UI isMuted:', isMuted);
+      
       const muteBtn = document.getElementById('muteBtn');
       if (isMuted) {
         muteBtn.textContent = '🔇';
@@ -761,6 +814,27 @@
         muteBtn.textContent = '🎤';
         muteBtn.classList.remove('muted');
       }
+    });
+
+    // スピーカー切り替えボタン（スマホのみ）
+    document.getElementById('speakerBtn').addEventListener('click', () => {
+      isSpeakerMode = !isSpeakerMode;
+      const speakerBtn = document.getElementById('speakerBtn');
+      const remoteAudio = document.getElementById('remoteAudio');
+      
+      if (isSpeakerMode) {
+        speakerBtn.textContent = '🔊 スピーカー';
+        speakerBtn.classList.add('speaker-on');
+        // スピーカー出力
+        remoteAudio.volume = 1.0;
+      } else {
+        speakerBtn.textContent = '🎧 イヤホン';
+        speakerBtn.classList.remove('speaker-on');
+        // イヤホン出力（音量を下げる）
+        remoteAudio.volume = 0.7;
+      }
+      
+      console.log(`[Audio] Speaker mode: ${isSpeakerMode}`);
     });
 
     // 通話終了ボタン
@@ -774,6 +848,11 @@
         callTimerInterval = null;
       }
       callStartTime = null;
+      
+      // ミュート状態リセット
+      isMuted = false;
+      document.getElementById('muteBtn').textContent = '🎤';
+      document.getElementById('muteBtn').classList.remove('muted');
       
       // チャット画面に戻る
       document.getElementById('voiceCallScreen').classList.remove('active');
@@ -831,6 +910,9 @@
         }
         
         if (message.type === 'call-accepted') {
+          // マイク初期化
+          initializeMicrophone();
+          
           // 通話画面に切り替え
           document.getElementById('chatScreen').classList.remove('active');
           document.getElementById('voiceCallScreen').classList.add('active');
@@ -860,6 +942,11 @@
           }
           callStartTime = null;
           
+          // ミュート状態リセット
+          isMuted = false;
+          document.getElementById('muteBtn').textContent = '🎤';
+          document.getElementById('muteBtn').classList.remove('muted');
+          
           // チャット画面に戻る
           document.getElementById('voiceCallScreen').classList.remove('active');
           document.getElementById('chatScreen').classList.add('active');
@@ -880,7 +967,7 @@
 
     // リモートストリーム受信
     client.onRemoteStream((stream) => {
-      console.log('audiook');
+      console.log('Remote audio stream received');
       document.getElementById('remoteAudio').srcObject = stream;
     });
 
@@ -896,6 +983,13 @@
       document.getElementById('chatScreen').classList.remove('active');
       document.getElementById('voiceCallScreen').classList.remove('active');
       document.getElementById('encryptionStatus').textContent = '暗号化状態:すっげぇ異常';
+      
+      // タイマー停止
+      if (callTimerInterval) {
+        clearInterval(callTimerInterval);
+        callTimerInterval = null;
+      }
+      callStartTime = null;
     });
 
     // ピア接続完了
