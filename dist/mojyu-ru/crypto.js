@@ -1017,7 +1017,10 @@ export class RSA {
         if (!p || !q) {
             throw new Error("大きな素数の生成に失敗しました");
         }
-        if (p === q) {
+        const diff = p > q ? p - q : q - p;
+        // 2048ビット(bits=2048)なら、差が 2^(1024 - 100) くらいは欲しい
+        const minDiff = 1n << (BigInt(half) - 100n);
+        if (diff < minDiff) {
             return this.generateRSAKeyPair(bits);
         }
         const n = p * q;
