@@ -1210,7 +1210,6 @@ private barrettReduce(
 
     if (integers.length === 9) {
       // PKCS#1形式（直接）
-      ("🔍 PKCS#1形式を検出");
       n = integers[1];
       e = integers[2];
       d = integers[3];
