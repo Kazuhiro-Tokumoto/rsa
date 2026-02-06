@@ -22,12 +22,17 @@ export class RSA {
         let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
         const len = data.length;
         const bitLen = len * 8;
-        const padLen = ((len + 8) >> 6) + 1;
-        const blocks = new Uint8Array(padLen * 64);
+        // パディング長の計算を修正
+        // メッセージ + 0x80 + ゼロパディング + 8バイト(64ビット長)が64の倍数になるように
+        const padLen = len + 1 + 8; // メッセージ + 0x80 + 長さフィールド
+        const blockCount = Math.ceil(padLen / 64);
+        const blocks = new Uint8Array(blockCount * 64);
         blocks.set(data);
         blocks[len] = 0x80;
         const view = new DataView(blocks.buffer);
-        view.setUint32(blocks.length - 4, bitLen, false);
+        // 64ビット長を正しく設定(上位32ビットは0、下位32ビットにbitLen)
+        view.setUint32(blocks.length - 8, 0, false); // 上位32ビット
+        view.setUint32(blocks.length - 4, bitLen, false); // 下位32ビット
         for (let i = 0; i < blocks.length; i += 64) {
             const W = new Uint32Array(64);
             for (let t = 0; t < 16; t++) {
@@ -841,7 +846,7 @@ export class RSA {
                 offset += len;
             }
         }
-        // 🔥 修正: PKCS#8 と PKCS#1 を自動判定
+        // 🔥 修正: PKCS#8 と PKCS#1 を自動判定 そうだ　もちろんclaudeだ
         let n, e, d, p, q, dp, dq, qInv;
         if (integers.length === 9) {
             // PKCS#1形式（直接）
@@ -857,7 +862,6 @@ export class RSA {
         }
         else if (integers.length === 10) {
             // PKCS#8形式（exportToPemが作る形式）
-            ("🔍 PKCS#8形式を検出");
             n = integers[2]; // ← 1つずれる！
             e = integers[3];
             d = integers[4];
@@ -1343,12 +1347,17 @@ export class LatticeKEM {
         let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
         const len = data.length;
         const bitLen = len * 8;
-        const padLen = ((len + 8) >> 6) + 1;
-        const blocks = new Uint8Array(padLen * 64);
+        // パディング長の計算を修正
+        // メッセージ + 0x80 + ゼロパディング + 8バイト(64ビット長)が64の倍数になるように
+        const padLen = len + 1 + 8; // メッセージ + 0x80 + 長さフィールド
+        const blockCount = Math.ceil(padLen / 64);
+        const blocks = new Uint8Array(blockCount * 64);
         blocks.set(data);
         blocks[len] = 0x80;
         const view = new DataView(blocks.buffer);
-        view.setUint32(blocks.length - 4, bitLen, false);
+        // 64ビット長を正しく設定(上位32ビットは0、下位32ビットにbitLen)
+        view.setUint32(blocks.length - 8, 0, false); // 上位32ビット
+        view.setUint32(blocks.length - 4, bitLen, false); // 下位32ビット
         for (let i = 0; i < blocks.length; i += 64) {
             const W = new Uint32Array(64);
             for (let t = 0; t < 16; t++) {
@@ -1400,17 +1409,6 @@ export class LatticeKEM {
     mod(a, m) {
         const result = a % m;
         return result < 0n ? result + m : result;
-    }
-    modPow(base, exp, mod) {
-        let result = 1n;
-        base = base % mod;
-        while (exp > 0n) {
-            if (exp & 1n)
-                result = (result * base) % mod;
-            exp = exp >> 1n;
-            base = (base * base) % mod;
-        }
-        return result;
     }
     polyMul(a, b) {
         const result = new Array(this.N).fill(0n);
