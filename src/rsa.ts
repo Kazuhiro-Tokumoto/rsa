@@ -1,4 +1,4 @@
-import { RSA ,LatticeKEM,AES } from "./mojyu-ru/crypto.js";
+import { RSA ,LatticeKEM,AES ,Ed25519} from "./mojyu-ru/crypto.js";
 import { createHeader } from "./header.js";
 const header = createHeader("ブラウザ上で動作するRSA暗号ツール", "", false);
 document.body.prepend(header);
@@ -115,20 +115,27 @@ function showToast(
 // メイン関数
 // ============================================================
 export async function main(): Promise<void> {
-
+console.time("kemtest");
 const lwn = new LatticeKEM();
+console.time("lwngen");
 const keys = await lwn.gen();
+console.timeEnd("lwngen");
 const pubKey = keys.publicKey;
 const secKey = keys.secretKey;
 const rho = keys.rho;
+console.time("lwnenc");
 const encResult = await lwn.enc(pubKey);
+console.timeEnd("lwnenc");
 console.log(pubKey)
 const cipher = encResult.ciphertext;
 const sharedSecretEnc = encResult.sharedSecret;
+console.time("lwndec");
 const sharedSecretDec = await lwn.qd(secKey, cipher);
+console.timeEnd("lwndec");
 console.log("共有秘密の一致:", sharedSecretEnc.toString() === sharedSecretDec.toString());
 console.log("共有秘密 (暗号化側):", sharedSecretEnc);
 console.log("共有秘密 (復号化側):", sharedSecretDec);
+console.timeEnd("kemtest");
 const aes = new AES();
 const aesKey = sharedSecretEnc
 const aeskey2 = sharedSecretDec
