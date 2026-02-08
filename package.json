@@ -30,6 +30,7 @@
   "dependencies": {
     "@noble/curves": "^2.0.1",
     "@supabase/supabase-js": "^2.89.0",
+    "node-datachannel": "^0.32.0",
     "prettier": "^3.8.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
