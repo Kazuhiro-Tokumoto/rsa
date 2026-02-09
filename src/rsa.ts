@@ -1,4 +1,4 @@
-import { RSA ,LatticeKEM,AES ,Ed25519} from "./mojyu-ru/crypto.js";
+import { RSA, LatticeKEM, AES } from "./mojyu-ru/crypto.js";
 import { createHeader } from "./header.js";
 const header = createHeader("ブラウザ上で動作するRSA暗号ツール", "", false);
 document.body.prepend(header);
@@ -115,37 +115,41 @@ function showToast(
 // メイン関数
 // ============================================================
 export async function main(): Promise<void> {
-console.time("kemtest");
-const lwn = new LatticeKEM();
-console.time("lwngen");
-const keys = await lwn.gen();
-console.timeEnd("lwngen");
-const pubKey = keys.publicKey;
-const secKey = keys.secretKey;
-const rho = keys.rho;
-console.time("lwnenc");
-const encResult = await lwn.enc(pubKey);
-console.timeEnd("lwnenc");
-console.log(pubKey)
-const cipher = encResult.ciphertext;
-const sharedSecretEnc = encResult.sharedSecret;
-console.time("lwndec");
-const sharedSecretDec = await lwn.qd(secKey, cipher);
-console.timeEnd("lwndec");
-console.log("共有秘密の一致:", sharedSecretEnc.toString() === sharedSecretDec.toString());
-console.log("共有秘密 (暗号化側):", sharedSecretEnc);
-console.log("共有秘密 (復号化側):", sharedSecretDec);
-console.timeEnd("kemtest");
-const aes = new AES();
-const aesKey = sharedSecretEnc
-const aeskey2 = sharedSecretDec
-const plaintext = "こんにちは、世界！This is a test message for AES encryption.";
-const encrypted = await aes.encrypt(plaintext, aesKey);
-const decrypted = await aes.decrypt(encrypted, aeskey2);
-console.log("AES暗号化前:", plaintext);
-console.log("AES暗号化後:", encrypted);
-console.log("AES復号化後:", decrypted);
-console.log("復号化成功:", plaintext === decrypted);
+  console.time("kemtest");
+  const lwn = new LatticeKEM();
+  console.time("lwngen");
+  const keys = await lwn.gen();
+  console.timeEnd("lwngen");
+  const pubKey = keys.publicKey;
+  const secKey = keys.secretKey;
+  const rho = keys.rho;
+  console.time("lwnenc");
+  const encResult = await lwn.enc(pubKey);
+  console.timeEnd("lwnenc");
+  console.log(pubKey);
+  const cipher = encResult.ciphertext;
+  const sharedSecretEnc = encResult.sharedSecret;
+  console.time("lwndec");
+  const sharedSecretDec = await lwn.qd(secKey, cipher);
+  console.timeEnd("lwndec");
+  console.log(
+    "共有秘密の一致:",
+    sharedSecretEnc.toString() === sharedSecretDec.toString(),
+  );
+  console.log("共有秘密 (暗号化側):", sharedSecretEnc);
+  console.log("共有秘密 (復号化側):", sharedSecretDec);
+  console.timeEnd("kemtest");
+  const aes = new AES();
+  const aesKey = sharedSecretEnc;
+  const aeskey2 = sharedSecretDec;
+  const plaintext =
+    "こんにちは、世界！This is a test message for AES encryption.";
+  const encrypted = await aes.encrypt(plaintext, aesKey);
+  const decrypted = await aes.decrypt(encrypted, aeskey2);
+  console.log("AES暗号化前:", plaintext);
+  console.log("AES暗号化後:", encrypted);
+  console.log("AES復号化後:", decrypted);
+  console.log("復号化成功:", plaintext === decrypted);
 
   // 既存のRSAアプリを削除（二重実行防止）
   const existingApp = document.getElementById("rsa-app");
@@ -233,23 +237,23 @@ console.log("復号化成功:", plaintext === decrypted);
   };
   keySec.appendChild(genBtn);
   const btnContainer = document.createElement("div");
-Object.assign(btnContainer.style, {
-  display: "flex",
-  gap: "10px",
-  marginBottom: "10px",
-});
-keySec.appendChild(btnContainer);
+  Object.assign(btnContainer.style, {
+    display: "flex",
+    gap: "10px",
+    marginBottom: "10px",
+  });
+  keySec.appendChild(btnContainer);
 
-// 既存の生成ボタンをコンテナに入れる
-btnContainer.appendChild(genBtn);
+  // 既存の生成ボタンをコンテナに入れる
+  btnContainer.appendChild(genBtn);
 
-// --- 変換ボタンの生成 (初期は非表示) ---
-const convertBtn = document.createElement("button");
-convertBtn.textContent = "🔄 OpenSSHをPEMに変換";
+  // --- 変換ボタンの生成 (初期は非表示) ---
+  const convertBtn = document.createElement("button");
+  convertBtn.textContent = "🔄 OpenSSHをPEMに変換";
 
-// genBtnのスタイルをベースにして高さを統一
-Object.assign(convertBtn.style, {
-  display: "none", 
+  // genBtnのスタイルをベースにして高さを統一
+  Object.assign(convertBtn.style, {
+    display: "none",
     marginBottom: "10px",
     padding: "10px 20px",
     fontSize: "14px",
@@ -259,15 +263,18 @@ Object.assign(convertBtn.style, {
     border: "1px solid #ddd",
     borderRadius: "4px",
     fontWeight: "500",
-});
+  });
 
-// ホバー効果もgenBtnに合わせる
-convertBtn.onmouseover = () => { convertBtn.style.backgroundColor = "#f8f8f8"; };
-convertBtn.onmouseout = () => { convertBtn.style.backgroundColor = "#fff"; };
+  // ホバー効果もgenBtnに合わせる
+  convertBtn.onmouseover = () => {
+    convertBtn.style.backgroundColor = "#f8f8f8";
+  };
+  convertBtn.onmouseout = () => {
+    convertBtn.style.backgroundColor = "#fff";
+  };
 
-// 既存の genBtn のすぐ後ろに配置
-genBtn.parentNode.insertBefore(convertBtn, genBtn.nextSibling);
-
+  // 既存の genBtn のすぐ後ろに配置
+  genBtn.parentNode.insertBefore(convertBtn, genBtn.nextSibling);
 
   const pemInput = document.createElement("textarea");
   pemInput.placeholder = "秘密鍵 (PEM形式)";
@@ -366,36 +373,42 @@ genBtn.parentNode.insertBefore(convertBtn, genBtn.nextSibling);
     }
   };
 
-convertBtn.onclick = async (): Promise<void> => {
-  try {
-    const rawKey = pemInput.value.trim();
-    
-    // クラス化した parseOpenSSH と exportToPem を使用
-    const params = cryptos.parseOpenSSH(rawKey);
-    const pem = cryptos.exportToPem(
-      params.n, params.e, params.d, params.p, params.q
-    );
+  convertBtn.onclick = async (): Promise<void> => {
+    try {
+      const rawKey = pemInput.value.trim();
 
-    if (pem) {
-      pemInput.value = pem;
-      convertBtn.style.display = "none"; // 変換が終わったら隠す
-      updateKeys(); // 鍵の再パースと公開鍵の自動生成
-      showToast("PEM(PKCS#8)形式への変換に成功しました", "success");
+      // クラス化した parseOpenSSH と exportToPem を使用
+      const params = cryptos.parseOpenSSH(rawKey);
+      const pem = cryptos.exportToPem(
+        params.n,
+        params.e,
+        params.d,
+        params.p,
+        params.q,
+      );
+
+      if (pem) {
+        pemInput.value = pem;
+        convertBtn.style.display = "none"; // 変換が終わったら隠す
+        updateKeys(); // 鍵の再パースと公開鍵の自動生成
+        showToast("PEM(PKCS#8)形式への変換に成功しました", "success");
+      }
+    } catch (e) {
+      console.error("変換エラー:", e);
+      showToast("変換に失敗しました。鍵の形式を確認してください。", "error");
     }
-  } catch (e) {
-    console.error("変換エラー:", e);
-    showToast("変換に失敗しました。鍵の形式を確認してください。", "error");
-  }
-};
+  };
 
-pemInput.oninput = (): void => {
-  const val = pemInput.value.trim();
+  pemInput.oninput = (): void => {
+    const val = pemInput.value.trim();
 
-  // OpenSSH形式を検知したときだけ、genBtnの横にスッと現れる
-  convertBtn.style.display = val.includes("BEGIN OPENSSH PRIVATE KEY") ? "inline-block" : "none";
+    // OpenSSH形式を検知したときだけ、genBtnの横にスッと現れる
+    convertBtn.style.display = val.includes("BEGIN OPENSSH PRIVATE KEY")
+      ? "inline-block"
+      : "none";
 
-  updateKeys();
-};
+    updateKeys();
+  };
 
   genBtn.onclick = async (): Promise<void> => {
     genBtn.textContent = "鍵ペアを生成中...";
@@ -671,10 +684,7 @@ pemInput.oninput = (): void => {
   }
 }
 
-// ============================================================
-// エントリーポイント
-// ============================================================
-  main();
+main();
 //npx prettier --write src/rsa.ts
 //npx tsc
 //npx tsx
