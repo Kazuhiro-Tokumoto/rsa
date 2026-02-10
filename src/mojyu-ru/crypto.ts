@@ -2376,7 +2376,8 @@ export class AES {
   }
 }
 
-//claude+github copilot
+//claude+github copilotさいきょーすぎるこのくみあわせ
+//つおい
 /**
  * Ed25519 — 最適化実装
  *
