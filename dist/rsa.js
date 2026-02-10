@@ -1,4 +1,4 @@
-import { RSA, LatticeKEM, AES, } from "./mojyu-ru/crypto.js";
+import { RSA, LatticeKEM, AES } from "./mojyu-ru/crypto.js";
 import { createHeader } from "./header.js";
 const header = createHeader("ブラウザ上で動作するRSA暗号ツール", "", false);
 document.body.prepend(header);
@@ -238,8 +238,12 @@ export async function main() {
         fontWeight: "500",
     });
     // ホバー効果もgenBtnに合わせる
-    convertBtn.onmouseover = () => { convertBtn.style.backgroundColor = "#f8f8f8"; };
-    convertBtn.onmouseout = () => { convertBtn.style.backgroundColor = "#fff"; };
+    convertBtn.onmouseover = () => {
+        convertBtn.style.backgroundColor = "#f8f8f8";
+    };
+    convertBtn.onmouseout = () => {
+        convertBtn.style.backgroundColor = "#fff";
+    };
     // 既存の genBtn のすぐ後ろに配置
     genBtn.parentNode.insertBefore(convertBtn, genBtn.nextSibling);
     const pemInput = document.createElement("textarea");
@@ -348,7 +352,9 @@ export async function main() {
     pemInput.oninput = () => {
         const val = pemInput.value.trim();
         // OpenSSH形式を検知したときだけ、genBtnの横にスッと現れる
-        convertBtn.style.display = val.includes("BEGIN OPENSSH PRIVATE KEY") ? "inline-block" : "none";
+        convertBtn.style.display = val.includes("BEGIN OPENSSH PRIVATE KEY")
+            ? "inline-block"
+            : "none";
         updateKeys();
     };
     genBtn.onclick = async () => {
@@ -566,67 +572,6 @@ export async function main() {
         }
     }
 }
-// ============================================================
-// エントリーポイント
-// ============================================================
-(async () => {
-    // RSAクラスのインポート （提供されたクラス）
-    // RSAクラスをインスタンス化
-    const rsa = new RSA();
-    await rsa.initAsync(); // smallPrimes を初期化
-    // Web Crypto API の鍵生成
-    const generateKeysWebCrypto = async () => {
-        return crypto.subtle.generateKey({
-            name: "RSA-OAEP",
-            modulusLength: 4096,
-            publicExponent: new Uint8Array([1, 0, 1]), // e = 65537
-            hash: "SHA-256",
-        }, true, // エクスポート可能
-        ["encrypt", "decrypt"]);
-    };
-    // テスト用メッセージ
-    const message = "Hello, RSA Test!";
-    // RSAクラスの鍵生成テスト
-    console.log("🔑 RSAクラス: 鍵生成中...");
-    console.time("RSA Class - Key Generation");
-    const keyPair = await rsa.generateRSAKeyPair(4096);
-    console.timeEnd("RSA Class - Key Generation");
-    // Web Crypto API の鍵生成テスト
-    console.log("🔑 Web Crypto API: 鍵生成中...");
-    console.time("Web Crypto - Key Generation");
-    const webCryptoKeys = await generateKeysWebCrypto();
-    const exportedKey = await crypto.subtle.exportKey("spki", webCryptoKeys.publicKey);
-    const exportedKeyprv = await crypto.subtle.exportKey("spki", webCryptoKeys.privateKey);
-    console.log(exportedKey);
-    console.timeEnd("Web Crypto - Key Generation");
-    // メッセージのRSAクラス暗号化
-    console.log("🔐 RSAクラス: 暗号化中...");
-    console.time("RSA Class - Encryption");
-    const encryptedMessageClass = await rsa.encryptStringToBase64(message, keyPair.e, keyPair.n, keyPair.muN, keyPair.nShift);
-    console.timeEnd("RSA Class - Encryption");
-    // Web Crypto API の暗号化
-    console.log("🔐 Web Crypto API: 暗号化中...");
-    console.time("Web Crypto - Encryption");
-    const encoder = new TextEncoder();
-    const encryptedMessageWebCrypto = await crypto.subtle.encrypt({ name: "RSA-OAEP" }, webCryptoKeys.publicKey, encoder.encode(message));
-    console.timeEnd("Web Crypto - Encryption");
-    // メッセージのRSAクラス復号
-    console.log("🔓 RSAクラス: 復号化中...");
-    console.time("RSA Class - Decryption");
-    const decryptedMessageClass = await rsa.decryptBase64ToString(encryptedMessageClass, keyPair.d, keyPair.p, keyPair.q, keyPair.n, keyPair.dp, keyPair.dq, keyPair.qInv, keyPair.muP, keyPair.muQ, keyPair.muN, keyPair.pShift, keyPair.qShift, keyPair.nShift);
-    console.timeEnd("RSA Class - Decryption");
-    // Web Crypto API の復号
-    console.log("🔓 Web Crypto API: 復号化中...");
-    console.time("Web Crypto - Decryption");
-    const decryptedMessageWebCrypto = new TextDecoder().decode(await crypto.subtle.decrypt({ name: "RSA-OAEP" }, webCryptoKeys.privateKey, encryptedMessageWebCrypto));
-    console.timeEnd("Web Crypto - Decryption");
-    // 復号結果の確認
-    console.log("\n✅ 結果比較:");
-    console.log("RSAクラス:", decryptedMessageClass);
-    console.log("Web Crypto API:", decryptedMessageWebCrypto);
-    console.assert(decryptedMessageClass === message, "RSAクラスでの復号結果が一致しません！");
-    console.assert(decryptedMessageWebCrypto === message, "Web Crypto APIでの復号結果が一致しません！");
-})();
 main();
 //npx prettier --write src/rsa.ts
 //npx tsc

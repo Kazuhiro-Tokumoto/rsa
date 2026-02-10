@@ -8,14 +8,17 @@ export class RSA {
     }
     sha256(data) {
         const K = new Uint32Array([
-            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+            0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+            0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+            0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+            0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+            0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+            0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+            0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+            0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
         ]);
         const rotr = (x, n) => (x >>> n) | (x << (32 - n));
         let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
@@ -402,7 +405,8 @@ export class RSA {
                     let restoredBytes = this.bigintToUint8Array(m);
                     // 先頭の0x00を除去
                     let start = 0;
-                    while (start < restoredBytes.length && restoredBytes[start] === 0x00) {
+                    while (start < restoredBytes.length &&
+                        restoredBytes[start] === 0x00) {
                         start++;
                     }
                     if (start > 0) {
@@ -627,7 +631,7 @@ export class RSA {
         if (r >= mod)
             r -= mod;
         // xが負にならない前提なら、ここも不要になる
-        // if (r < 0n) r += mod; 
+        // if (r < 0n) r += mod;
         return r;
     }
     montgomeryModExpUltra(base, exp, mod, mu, shift) {
@@ -1332,14 +1336,17 @@ export class LatticeKEM {
     constructor() { }
     sha256(data) {
         const K = new Uint32Array([
-            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-            0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-            0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-            0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-            0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-            0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+            0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+            0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+            0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+            0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+            0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+            0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+            0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+            0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+            0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+            0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+            0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
         ]);
         const rotr = (x, n) => (x >>> n) | (x << (32 - n));
         let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
@@ -1473,7 +1480,7 @@ export class LatticeKEM {
             const hash = this.sha256(input);
             const hashArray = new Uint8Array(hash);
             for (let i = 0; i < hashArray.length - 1 && index < this.N; i += 2) {
-                const d1 = (hashArray[i] | (hashArray[i + 1] << 8)) & 0x0FFF;
+                const d1 = (hashArray[i] | (hashArray[i + 1] << 8)) & 0x0fff;
                 if (d1 < Number(this.Q)) {
                     poly[index++] = BigInt(d1);
                 }
@@ -1506,9 +1513,9 @@ export class LatticeKEM {
         for (let i = 0; i < this.N; i += 2) {
             const t0 = Number(this.mod(poly[i], this.Q));
             const t1 = Number(this.mod(poly[i + 1], this.Q));
-            bytes[byteIndex] = t0 & 0xFF;
-            bytes[byteIndex + 1] = ((t0 >> 8) & 0x0F) | ((t1 & 0x0F) << 4);
-            bytes[byteIndex + 2] = (t1 >> 4) & 0xFF;
+            bytes[byteIndex] = t0 & 0xff;
+            bytes[byteIndex + 1] = ((t0 >> 8) & 0x0f) | ((t1 & 0x0f) << 4);
+            bytes[byteIndex + 2] = (t1 >> 4) & 0xff;
             byteIndex += 3;
         }
         return bytes;
@@ -1517,8 +1524,8 @@ export class LatticeKEM {
         const poly = new Array(this.N);
         let byteIndex = 0;
         for (let i = 0; i < this.N; i += 2) {
-            poly[i] = BigInt(bytes[byteIndex] | ((bytes[byteIndex + 1] & 0x0F) << 8));
-            poly[i + 1] = BigInt(((bytes[byteIndex + 1] >> 4) & 0x0F) | (bytes[byteIndex + 2] << 4));
+            poly[i] = BigInt(bytes[byteIndex] | ((bytes[byteIndex + 1] & 0x0f) << 8));
+            poly[i + 1] = BigInt(((bytes[byteIndex + 1] >> 4) & 0x0f) | (bytes[byteIndex + 2] << 4));
             byteIndex += 3;
         }
         return poly;
@@ -1546,7 +1553,7 @@ export class LatticeKEM {
             if (bit === 1) {
                 const byteIndex = Math.floor(i / 8);
                 const bitIndex = 7 - (i % 8);
-                msg[byteIndex] |= (1 << bitIndex);
+                msg[byteIndex] |= 1 << bitIndex;
             }
         }
         return msg;
@@ -1593,7 +1600,7 @@ export class LatticeKEM {
             t[i] = this.polyAdd(sum, e[i]);
         }
         // 公開鍵のエンコード
-        const pkBytes = new Uint8Array(32 + this.K * (this.N * 12) / 8);
+        const pkBytes = new Uint8Array(32 + (this.K * (this.N * 12)) / 8);
         pkBytes.set(rho, 0);
         let offset = 32;
         for (let i = 0; i < this.K; i++) {
@@ -1604,7 +1611,7 @@ export class LatticeKEM {
         return {
             publicKey: pkBytes,
             secretKey: s,
-            rho: rho
+            rho: rho,
         };
     }
     async enc(publicKey) {
@@ -1672,7 +1679,7 @@ export class LatticeKEM {
         ctBytes.set(vEncoded, offset);
         return {
             ciphertext: ctBytes,
-            sharedSecret: m
+            sharedSecret: m,
         };
     }
     async qd(secretKey, ciphertext) {
@@ -1749,10 +1756,14 @@ export class Ed25519 {
     static Gx = 15112221349535400772501151409588531511454012693041857206046113283949847762202n;
     static Gy = 46316835694926478169428394003475163141307993866256225615783033603165251855960n;
     static G_EXT = [
-        Ed25519.Gx, Ed25519.Gy, 1n,
-        Ed25519.Gx * Ed25519.Gy % Ed25519.p,
+        Ed25519.Gx,
+        Ed25519.Gy,
+        1n,
+        (Ed25519.Gx * Ed25519.Gy) % Ed25519.p,
     ];
-    static ED25519_OID = new Uint8Array([0x06, 0x03, 0x2b, 0x65, 0x70]);
+    static ED25519_OID = new Uint8Array([
+        0x06, 0x03, 0x2b, 0x65, 0x70,
+    ]);
     // ── Fixed-window テーブル (遅延初期化, w=4) ──
     static W = 4;
     static _gTable = null;
@@ -1807,21 +1818,31 @@ export class Ed25519 {
         const F = this.mod(D - C, P);
         const G = this.mod(D + C, P);
         const H = this.mod(B + A, P);
-        return [this.mod(E * F, P), this.mod(G * H, P), this.mod(F * G, P), this.mod(E * H, P)];
+        return [
+            this.mod(E * F, P),
+            this.mod(G * H, P),
+            this.mod(F * G, P),
+            this.mod(E * H, P),
+        ];
     }
     static extDouble(pt) {
         const P = this.p;
         const [X1, Y1, Z1] = pt;
         const A = this.mod(X1 * X1, P);
         const B = this.mod(Y1 * Y1, P);
-        const C = this.mod(2n * (Z1 * Z1 % P), P);
+        const C = this.mod(2n * ((Z1 * Z1) % P), P);
         const D = this.mod(P - A, P);
         const xpy = this.mod(X1 + Y1, P);
         const E = this.mod(xpy * xpy - A - B, P);
         const G = this.mod(D + B, P);
         const F = this.mod(G - C, P);
         const H = this.mod(D - B, P);
-        return [this.mod(E * F, P), this.mod(G * H, P), this.mod(F * G, P), this.mod(E * H, P)];
+        return [
+            this.mod(E * F, P),
+            this.mod(G * H, P),
+            this.mod(F * G, P),
+            this.mod(E * H, P),
+        ];
     }
     static extToAffine(pt) {
         const [X, Y, Z] = pt;
@@ -1911,7 +1932,8 @@ export class Ed25519 {
             x = P - x;
         const xc = (x * x) % P;
         const yc = (y * y) % P;
-        if (this.mod(yc - xc, P) !== this.mod(1n + (this.d * ((xc * yc) % P)) % P, P))
+        if (this.mod(yc - xc, P) !==
+            this.mod(1n + ((this.d * ((xc * yc) % P)) % P), P))
             throw new Error("Point is not on curve");
         return [x, y, 1n, (x * y) % P];
     }
@@ -2016,7 +2038,11 @@ export class Ed25519 {
             for (let i = 0; i < n; i++)
                 length = (length << 8) | data[offset++];
         }
-        return { tag, value: data.subarray(offset, offset + length), end: offset + length };
+        return {
+            tag,
+            value: data.subarray(offset, offset + length),
+            end: offset + length,
+        };
     }
     static parseDerChildren(data) {
         const children = [];
@@ -2039,7 +2065,10 @@ export class Ed25519 {
         if (children.length === 0 || children[0].tag !== 0x06)
             throw new Error("Expected OID");
         const oid = children[0].value;
-        if (oid.length !== 3 || oid[0] !== 0x2b || oid[1] !== 0x65 || oid[2] !== 0x70)
+        if (oid.length !== 3 ||
+            oid[0] !== 0x2b ||
+            oid[1] !== 0x65 ||
+            oid[2] !== 0x70)
             throw new Error("OID is not Ed25519 (1.3.101.112)");
     }
     // ━━━━━━━━━━━━━ Base64 / PEM ━━━━━━━━━━━━━
