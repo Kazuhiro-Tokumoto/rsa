@@ -60,8 +60,12 @@ function showToast(
     opacity: "0.8",
   });
 
-  closeBtn.onmouseover = () => { closeBtn.style.opacity = "1"; };
-  closeBtn.onmouseout = () => { closeBtn.style.opacity = "0.8"; };
+  closeBtn.onmouseover = () => {
+    closeBtn.style.opacity = "1";
+  };
+  closeBtn.onmouseout = () => {
+    closeBtn.style.opacity = "0.8";
+  };
 
   const removeToast = () => {
     toast.style.animation = "slideOut 0.3s ease-out";
@@ -97,7 +101,9 @@ function showToast(
 // ヘルパー
 // ============================================================
 function toHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function fromHex(hex: string): Uint8Array {
@@ -185,12 +191,19 @@ export async function main(): Promise<void> {
       fontWeight: "500",
       transition: "all 0.2s",
     });
-    btn.onmouseover = () => { btn.style.opacity = "0.85"; };
-    btn.onmouseout = () => { btn.style.opacity = "1"; };
+    btn.onmouseover = () => {
+      btn.style.opacity = "0.85";
+    };
+    btn.onmouseout = () => {
+      btn.style.opacity = "1";
+    };
     return btn;
   }
 
-  function createTextarea(placeholder: string, height: string = "120px"): HTMLTextAreaElement {
+  function createTextarea(
+    placeholder: string,
+    height: string = "120px",
+  ): HTMLTextAreaElement {
     const ta = document.createElement("textarea");
     ta.placeholder = placeholder;
     Object.assign(ta.style, {
@@ -356,7 +369,9 @@ export async function main(): Promise<void> {
   copyBtn.style.gridColumn = "span 2";
   clearBtn.style.gridColumn = "span 2";
 
-  [signBtn, verifyBtn, copyBtn, clearBtn].forEach((b) => btnGrid.appendChild(b));
+  [signBtn, verifyBtn, copyBtn, clearBtn].forEach((b) =>
+    btnGrid.appendChild(b),
+  );
 
   const resultArea = document.createElement("pre");
   Object.assign(resultArea.style, {
@@ -394,9 +409,7 @@ export async function main(): Promise<void> {
 
       const sigBase64 = toBase64(signature);
 
-      resultArea.textContent =
-        `【Ed25519 署名結果】\n` +
-        sigBase64;
+      resultArea.textContent = `【Ed25519 署名結果】\n` + sigBase64;
 
       showToast("署名が完了しました", "success");
     } catch (e) {
@@ -449,7 +462,10 @@ export async function main(): Promise<void> {
     const text = resultArea.textContent || "";
     const lines = text.split("\n");
     // ヘッダー行を除いた署名部分のみ
-    const content = lines.filter((l) => !l.startsWith("【") && l.trim()).join("").trim();
+    const content = lines
+      .filter((l) => !l.startsWith("【") && l.trim())
+      .join("")
+      .trim();
     if (content) {
       try {
         await navigator.clipboard.writeText(content);
@@ -502,8 +518,8 @@ export async function main(): Promise<void> {
   const privPemToHexBtn = createButton("秘密鍵PEM → Hex", "#fff");
   const pubPemToHexBtn = createButton("公開鍵PEM → Hex", "#fff");
 
-  [hexToPrivPemBtn, hexToPubPemBtn, privPemToHexBtn, pubPemToHexBtn].forEach((b) =>
-    utilBtnGrid.appendChild(b),
+  [hexToPrivPemBtn, hexToPubPemBtn, privPemToHexBtn, pubPemToHexBtn].forEach(
+    (b) => utilBtnGrid.appendChild(b),
   );
 
   const utilResult = document.createElement("pre");

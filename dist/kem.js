@@ -57,7 +57,8 @@ class KEMTool {
         `;
         const title = document.createElement("h1");
         title.textContent = "Lattice-KEM 鍵交換ツール";
-        title.style.cssText = "color: #2c3e50; margin: 0 0 10px 0; font-size: 32px;";
+        title.style.cssText =
+            "color: #2c3e50; margin: 0 0 10px 0; font-size: 32px;";
         const subtitle = document.createElement("p");
         subtitle.textContent = "耐量子暗号による安全な鍵交換";
         subtitle.style.cssText = "color: #7f8c8d; margin: 0; font-size: 16px;";
@@ -104,16 +105,20 @@ class KEMTool {
             senderTab.style.color = "white";
             receiverTab.style.background = "#f5f5f5";
             receiverTab.style.color = "#666";
-            document.getElementById("senderPanel").style.display = "block";
-            document.getElementById("receiverPanel").style.display = "none";
+            document.getElementById("senderPanel").style.display =
+                "block";
+            document.getElementById("receiverPanel").style.display =
+                "none";
         };
         receiverTab.onclick = () => {
             receiverTab.style.background = "#f57c00";
             receiverTab.style.color = "white";
             senderTab.style.background = "#f5f5f5";
             senderTab.style.color = "#666";
-            document.getElementById("senderPanel").style.display = "none";
-            document.getElementById("receiverPanel").style.display = "block";
+            document.getElementById("senderPanel").style.display =
+                "none";
+            document.getElementById("receiverPanel").style.display =
+                "block";
         };
         container.appendChild(senderTab);
         container.appendChild(receiverTab);
@@ -135,7 +140,8 @@ class KEMTool {
         inputGroup.style.marginBottom = "15px";
         const label = document.createElement("label");
         label.textContent = "相手の公開鍵:";
-        label.style.cssText = "display: block; margin-bottom: 8px; font-weight: 600; color: #555;";
+        label.style.cssText =
+            "display: block; margin-bottom: 8px; font-weight: 600; color: #555;";
         const textarea = document.createElement("textarea");
         textarea.id = "theirPublicKey";
         textarea.placeholder = "相手から受け取った公開鍵をここに貼り付け...";
@@ -187,7 +193,7 @@ class KEMTool {
                 copyBtn.onclick = () => {
                     navigator.clipboard.writeText(ctBase64);
                     copyBtn.textContent = "コピー完了";
-                    setTimeout(() => copyBtn.textContent = "コピー", 2000);
+                    setTimeout(() => (copyBtn.textContent = "コピー"), 2000);
                 };
             }
             catch (e) {
@@ -234,7 +240,7 @@ class KEMTool {
             copyBtn.onclick = () => {
                 navigator.clipboard.writeText(pubKeyBase64);
                 copyBtn.textContent = "コピー完了";
-                setTimeout(() => copyBtn.textContent = "コピー", 2000);
+                setTimeout(() => (copyBtn.textContent = "コピー"), 2000);
             };
         });
         panel.appendChild(genBtn);
@@ -246,14 +252,16 @@ class KEMTool {
         header2.style.cssText = "color: #f57c00; margin: 20px 0 15px 0;";
         panel.appendChild(header2);
         const desc2 = document.createElement("p");
-        desc2.textContent = "相手から受け取った暗号文を、あなたの秘密鍵で復号します。";
+        desc2.textContent =
+            "相手から受け取った暗号文を、あなたの秘密鍵で復号します。";
         desc2.style.cssText = "color: #555; margin-bottom: 15px;";
         panel.appendChild(desc2);
         const inputGroup = document.createElement("div");
         inputGroup.style.marginBottom = "15px";
         const label = document.createElement("label");
         label.textContent = "相手からの暗号文:";
-        label.style.cssText = "display: block; margin-bottom: 8px; font-weight: 600; color: #555;";
+        label.style.cssText =
+            "display: block; margin-bottom: 8px; font-weight: 600; color: #555;";
         const textarea = document.createElement("textarea");
         textarea.id = "receivedCiphertext";
         textarea.placeholder = "相手から受け取った暗号文をここに貼り付け...";
@@ -320,7 +328,8 @@ class KEMTool {
         `;
         const header = document.createElement("h2");
         header.textContent = "メッセージの暗号化/復号";
-        header.style.cssText = "color: #2c3e50; margin: 0 0 15px 0; font-size: 22px;";
+        header.style.cssText =
+            "color: #2c3e50; margin: 0 0 15px 0; font-size: 22px;";
         panel.appendChild(header);
         const desc = document.createElement("p");
         desc.textContent = "共有秘密を使ってメッセージを暗号化・復号します。";
@@ -330,7 +339,8 @@ class KEMTool {
         inputGroup.style.marginBottom = "15px";
         const label = document.createElement("label");
         label.textContent = "メッセージ:";
-        label.style.cssText = "display: block; margin-bottom: 8px; font-weight: 600; color: #555;";
+        label.style.cssText =
+            "display: block; margin-bottom: 8px; font-weight: 600; color: #555;";
         const textarea = document.createElement("textarea");
         textarea.id = "message";
         textarea.placeholder = "暗号化したいメッセージ、または復号したい暗号文...";
@@ -349,7 +359,8 @@ class KEMTool {
         inputGroup.appendChild(textarea);
         panel.appendChild(inputGroup);
         const btnContainer = document.createElement("div");
-        btnContainer.style.cssText = "display: flex; gap: 10px; margin-bottom: 15px;";
+        btnContainer.style.cssText =
+            "display: flex; gap: 10px; margin-bottom: 15px;";
         const encryptBtn = this.createButton("暗号化", "#7b1fa2", async () => {
             const result = panel.querySelector("#cryptResult");
             if (!this.sharedSecret) {
@@ -378,7 +389,7 @@ class KEMTool {
             copyBtn.onclick = () => {
                 navigator.clipboard.writeText(encrypted);
                 copyBtn.textContent = "コピー完了";
-                setTimeout(() => copyBtn.textContent = "コピー", 2000);
+                setTimeout(() => (copyBtn.textContent = "コピー"), 2000);
             };
         });
         const decryptBtn = this.createButton("復号", "#0288d1", async () => {

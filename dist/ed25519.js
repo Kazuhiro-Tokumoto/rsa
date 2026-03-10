@@ -51,8 +51,12 @@ function showToast(message, type = "success") {
         justifyContent: "center",
         opacity: "0.8",
     });
-    closeBtn.onmouseover = () => { closeBtn.style.opacity = "1"; };
-    closeBtn.onmouseout = () => { closeBtn.style.opacity = "0.8"; };
+    closeBtn.onmouseover = () => {
+        closeBtn.style.opacity = "1";
+    };
+    closeBtn.onmouseout = () => {
+        closeBtn.style.opacity = "0.8";
+    };
     const removeToast = () => {
         toast.style.animation = "slideOut 0.3s ease-out";
         setTimeout(() => {
@@ -84,7 +88,9 @@ function showToast(message, type = "success") {
 // ヘルパー
 // ============================================================
 function toHex(bytes) {
-    return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+    return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 }
 function fromHex(hex) {
     const clean = hex.replace(/\s+/g, "");
@@ -163,8 +169,12 @@ export async function main() {
             fontWeight: "500",
             transition: "all 0.2s",
         });
-        btn.onmouseover = () => { btn.style.opacity = "0.85"; };
-        btn.onmouseout = () => { btn.style.opacity = "1"; };
+        btn.onmouseover = () => {
+            btn.style.opacity = "0.85";
+        };
+        btn.onmouseout = () => {
+            btn.style.opacity = "1";
+        };
         return btn;
     }
     function createTextarea(placeholder, height = "120px") {
@@ -347,9 +357,7 @@ export async function main() {
             const signature = await Ed25519.sign(message, currentPrivateKey);
             console.timeEnd("ed25519-sign");
             const sigBase64 = toBase64(signature);
-            resultArea.textContent =
-                `【Ed25519 署名結果】\n` +
-                    sigBase64;
+            resultArea.textContent = `【Ed25519 署名結果】\n` + sigBase64;
             showToast("署名が完了しました", "success");
         }
         catch (e) {
@@ -395,7 +403,10 @@ export async function main() {
         const text = resultArea.textContent || "";
         const lines = text.split("\n");
         // ヘッダー行を除いた署名部分のみ
-        const content = lines.filter((l) => !l.startsWith("【") && l.trim()).join("").trim();
+        const content = lines
+            .filter((l) => !l.startsWith("【") && l.trim())
+            .join("")
+            .trim();
         if (content) {
             try {
                 await navigator.clipboard.writeText(content);

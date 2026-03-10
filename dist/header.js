@@ -1,5 +1,5 @@
 export function createHeader(text, author, showHome) {
-    const headerContainer = document.createElement('div');
+    const headerContainer = document.createElement("div");
     // className="flex flex-row border-b-[1px] w-full justify-center items-center mb-[2dvh]"
     headerContainer.style.cssText = `
     display: flex;
@@ -11,8 +11,8 @@ export function createHeader(text, author, showHome) {
     margin-bottom: 2dvh;
   `;
     if (showHome) {
-        const homeLink = document.createElement('p');
-        homeLink.textContent = 'ホームへ';
+        const homeLink = document.createElement("p");
+        homeLink.textContent = "ホームへ";
         // className="text-xl mb-[1dvh] justify-center items-center flex mr-[5dvh] cursor-pointer"
         homeLink.style.cssText = `
       font-size: 1.25rem;
@@ -25,11 +25,11 @@ export function createHeader(text, author, showHome) {
       cursor: pointer;
     `;
         homeLink.onclick = () => {
-            window.location.href = 'https://tools.shudo-physics.com/';
+            window.location.href = "https://tools.shudo-physics.com/";
         };
         headerContainer.appendChild(homeLink);
     }
-    const title = document.createElement('p');
+    const title = document.createElement("p");
     title.textContent = text;
     // className="text-3xl mb-[1dvh]"
     title.style.cssText = `

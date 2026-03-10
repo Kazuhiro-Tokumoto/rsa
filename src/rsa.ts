@@ -311,15 +311,6 @@ export async function main(): Promise<void> {
   const currentUrl = new URL(window.location.href);
   const cryptos = new RSA();
 
-  try {
-    await cryptos.initAsync(
-      "https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin",
-    );
-  } catch (e) {
-    console.error("初期化エラー:", e);
-    showToast("初期化に失敗しました", "error");
-  }
-
   let parsedKeysa;
   let parsedPubKeys;
 
@@ -378,7 +369,7 @@ export async function main(): Promise<void> {
       const rawKey = pemInput.value.trim();
 
       // クラス化した parseOpenSSH と exportToPem を使用
-      const params = cryptos.parseOpenSSH(rawKey);
+      const params = cryptos.parsePrivateKeyPem(rawKey);
       const pem = cryptos.exportToPem(
         params.n,
         params.e,

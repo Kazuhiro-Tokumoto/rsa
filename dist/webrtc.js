@@ -2,8 +2,8 @@
 // クライアント側（暗号化通信+音声通話対応版・完全版）
 // webrtc.ts
 // ========================================
-import { LatticeKEM } from './mojyu-ru/crypto.js';
-import { AES } from './mojyu-ru/crypto.js';
+import { LatticeKEM } from "./mojyu-ru/crypto.js";
+import { AES } from "./mojyu-ru/crypto.js";
 export class P2PClient {
     peerId;
     signalingSocket = null;
@@ -38,9 +38,9 @@ export class P2PClient {
     }
     generateId() {
         // UUID v4風のランダムID生成
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-            const r = Math.random() * 16 | 0;
-            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === "x" ? r : (r & 0x3) | 0x8;
             return v.toString(16);
         });
     }
@@ -66,8 +66,8 @@ export class P2PClient {
     async connectToPeer(targetPeerId) {
         // 自己接続チェック
         if (targetPeerId === this.peerId) {
-            console.error('[Client] ❌ Cannot connect to yourself!');
-            throw new Error('自分自身には接続できません');
+            console.error("[Client] ❌ Cannot connect to yourself!");
+            throw new Error("自分自身には接続できません");
         }
         console.log(`[Client] Connecting to peer: ${targetPeerId}`);
         this.remotePeerId = targetPeerId;
@@ -75,8 +75,8 @@ export class P2PClient {
         this.peerConnection = new RTCPeerConnection({
             iceServers: [
                 { urls: "stun:stun.l.google.com:19302" },
-                { urls: "stun:stun1.l.google.com:19302" }
-            ]
+                { urls: "stun:stun1.l.google.com:19302" },
+            ],
         });
         // 音声トラックを準備（ミュート状態）
         await this.prepareAudioTrack();
@@ -92,7 +92,7 @@ export class P2PClient {
                 this.signalingSocket.send(JSON.stringify({
                     type: "ice-candidate",
                     to: targetPeerId,
-                    candidate: event.candidate
+                    candidate: event.candidate,
                 }));
             }
         };
@@ -104,7 +104,7 @@ export class P2PClient {
             this.signalingSocket.send(JSON.stringify({
                 type: "offer",
                 to: targetPeerId,
-                offer: offer
+                offer: offer,
             }));
         }
     }
@@ -131,9 +131,7 @@ export class P2PClient {
         this.remotePeerId = data.from;
         this.isDisconnected = false;
         this.peerConnection = new RTCPeerConnection({
-            iceServers: [
-                { urls: "stun:stun.l.google.com:19302" }
-            ]
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
         });
         // 音声トラックを準備（ミュート状態）
         await this.prepareAudioTrack();
@@ -151,7 +149,7 @@ export class P2PClient {
                 this.signalingSocket.send(JSON.stringify({
                     type: "ice-candidate",
                     to: data.from,
-                    candidate: event.candidate
+                    candidate: event.candidate,
                 }));
             }
         };
@@ -165,7 +163,7 @@ export class P2PClient {
             this.signalingSocket.send(JSON.stringify({
                 type: "answer",
                 to: data.from,
-                answer: answer
+                answer: answer,
             }));
         }
     }
@@ -207,7 +205,7 @@ export class P2PClient {
     // リモートトラック受信設定
     setupTrackReceiver(pc) {
         pc.ontrack = (event) => {
-            console.log('[Client] Received remote track:', event.track.kind);
+            console.log("[Client] Received remote track:", event.track.kind);
             if (!this.remoteStream) {
                 this.remoteStream = new MediaStream();
             }
@@ -246,7 +244,8 @@ export class P2PClient {
         channel.onopen = async () => {
             console.log("[Client] DataChannel opened!");
             // ID比較して若い方が公開鍵を送信
-            if (this.remotePeerId && this.shouldInitiateKeyExchange(this.peerId, this.remotePeerId)) {
+            if (this.remotePeerId &&
+                this.shouldInitiateKeyExchange(this.peerId, this.remotePeerId)) {
                 console.log("[Client] Initiating key exchange (smaller ID)");
                 await this.initiateKeyExchange();
             }
@@ -288,7 +287,7 @@ export class P2PClient {
         const publicKeyBase64 = btoa(String.fromCharCode(...this.myPublicKey));
         this.sendRaw(JSON.stringify({
             type: "public-key",
-            publicKey: publicKeyBase64
+            publicKey: publicKeyBase64,
         }));
         console.log("[Client] Public key sent");
     }
@@ -336,7 +335,7 @@ export class P2PClient {
         const ciphertextBase64 = btoa(String.fromCharCode(...result.ciphertext));
         this.sendRaw(JSON.stringify({
             type: "kem-ciphertext",
-            ciphertext: ciphertextBase64
+            ciphertext: ciphertextBase64,
         }));
         this.isEncrypted = true;
         console.log("[Client] Shared secret established (encapsulator)");
@@ -392,7 +391,7 @@ export class P2PClient {
             const ciphertext = await this.aes.encrypt(message, this.sharedSecret);
             this.sendRaw(JSON.stringify({
                 type: "encrypted-message",
-                ciphertext: ciphertext
+                ciphertext: ciphertext,
             }));
             console.log("[Client] Sent encrypted message");
         }
@@ -419,25 +418,25 @@ export class P2PClient {
                 audio: {
                     echoCancellation: true,
                     noiseSuppression: true,
-                    autoGainControl: true
+                    autoGainControl: true,
                 },
-                video: false
+                video: false,
             });
             // 最初はミュート状態
-            this.localStream.getAudioTracks().forEach(track => {
+            this.localStream.getAudioTracks().forEach((track) => {
                 track.enabled = false;
             });
             // PeerConnectionに追加
             if (this.peerConnection) {
-                this.localStream.getTracks().forEach(track => {
+                this.localStream.getTracks().forEach((track) => {
                     this.peerConnection.addTrack(track, this.localStream);
-                    console.log('[Client] Added muted audio track');
+                    console.log("[Client] Added muted audio track");
                 });
             }
-            console.log('[Client] Audio track prepared (muted)');
+            console.log("[Client] Audio track prepared (muted)");
         }
         catch (error) {
-            console.warn('[Client] Could not prepare audio track:', error);
+            console.warn("[Client] Could not prepare audio track:", error);
             // マイク許可がない場合でも接続は続行
         }
     }
@@ -450,30 +449,30 @@ export class P2PClient {
                     audio: {
                         echoCancellation: true,
                         noiseSuppression: true,
-                        autoGainControl: true
+                        autoGainControl: true,
                     },
-                    video: false
+                    video: false,
                 });
                 // PeerConnectionに追加
                 if (this.peerConnection) {
-                    this.localStream.getTracks().forEach(track => {
+                    this.localStream.getTracks().forEach((track) => {
                         this.peerConnection.addTrack(track, this.localStream);
-                        console.log('[Client] Added audio track');
+                        console.log("[Client] Added audio track");
                     });
                 }
             }
             catch (error) {
-                console.error('[Client] Microphone access denied:', error);
+                console.error("[Client] Microphone access denied:", error);
                 throw error;
             }
         }
         // ミュート解除
         if (this.localStream) {
-            this.localStream.getAudioTracks().forEach(track => {
+            this.localStream.getAudioTracks().forEach((track) => {
                 track.enabled = true;
             });
             this.isAudioEnabled = true;
-            console.log('[Client] Audio call started (unmuted)');
+            console.log("[Client] Audio call started (unmuted)");
             return true;
         }
         return false;
@@ -481,21 +480,21 @@ export class P2PClient {
     // 音声通話停止（完全停止）
     stopAudioCall() {
         if (this.localStream) {
-            this.localStream.getTracks().forEach(track => {
+            this.localStream.getTracks().forEach((track) => {
                 track.stop();
             });
             this.localStream = null;
             this.isAudioEnabled = false;
-            console.log('[Client] Audio call stopped');
+            console.log("[Client] Audio call stopped");
         }
     }
     // マイクミュート
     muteMicrophone(muted) {
         if (this.localStream) {
-            this.localStream.getAudioTracks().forEach(track => {
+            this.localStream.getAudioTracks().forEach((track) => {
                 track.enabled = !muted;
             });
-            console.log(`[Client] Microphone ${muted ? 'muted' : 'unmuted'}`);
+            console.log(`[Client] Microphone ${muted ? "muted" : "unmuted"}`);
         }
     }
     // 音声状態取得

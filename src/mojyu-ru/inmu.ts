@@ -1,5 +1,5 @@
 export function isinmu(isinmu: boolean) {
-      if (isinmu) {
+  if (isinmu) {
     const link = document.createElement("link");
     link.rel = "icon";
     link.href = "https://kazuhiro-tokumoto.github.io/rsa/img/yaju.jpg";
