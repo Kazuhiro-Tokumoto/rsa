@@ -278,6 +278,13 @@ export async function main() {
     const urlParams = new URLSearchParams(window.location.search);
     const currentUrl = new URL(window.location.href);
     const cryptos = new RSA();
+    try {
+        await cryptos.initAsync("https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin");
+    }
+    catch (e) {
+        console.error("初期化エラー:", e);
+        showToast("初期化に失敗しました", "error");
+    }
     let parsedKeysa;
     let parsedPubKeys;
     pubInput.oninput = () => {

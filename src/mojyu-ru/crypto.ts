@@ -15,6 +15,14 @@ export class RSA {
     }
   >();
 
+  public async initAsync(
+    binPath: string = "https://cdn.jsdelivr.net/gh/Kazuhiro-Tokumoto/rsa@main/primes.bin",
+  ): Promise<void> {
+    const response = await fetch(binPath);
+    const buffer = await response.arrayBuffer();
+    this.smallPrimes = new Uint32Array(buffer);
+  }
+
   private sha256(data: Uint8Array): Uint8Array {
     const K = new Uint32Array([
       0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
@@ -43,19 +51,27 @@ export class RSA {
 
     const len = data.length;
     const bitLen = len * 8;
-    const blockCount = Math.ceil((len + 9) / 64);
+
+    // パディング長の計算を修正
+    // メッセージ + 0x80 + ゼロパディング + 8バイト(64ビット長)が64の倍数になるように
+    const padLen = len + 1 + 8; // メッセージ + 0x80 + 長さフィールド
+    const blockCount = Math.ceil(padLen / 64);
     const blocks = new Uint8Array(blockCount * 64);
+
     blocks.set(data);
     blocks[len] = 0x80;
+
     const view = new DataView(blocks.buffer);
-    view.setUint32(blocks.length - 8, Math.floor(bitLen / 0x100000000), false);
-    view.setUint32(blocks.length - 4, bitLen >>> 0, false);
+    // 64ビット長を正しく設定(上位32ビットは0、下位32ビットにbitLen)
+    view.setUint32(blocks.length - 8, 0, false); // 上位32ビット
+    view.setUint32(blocks.length - 4, bitLen, false); // 下位32ビット
 
     for (let i = 0; i < blocks.length; i += 64) {
       const W = new Uint32Array(64);
       for (let t = 0; t < 16; t++) {
         W[t] = view.getUint32(i + t * 4, false);
       }
+
       for (let t = 16; t < 64; t++) {
         const s0 = rotr(W[t - 15], 7) ^ rotr(W[t - 15], 18) ^ (W[t - 15] >>> 3);
         const s1 = rotr(W[t - 2], 17) ^ rotr(W[t - 2], 19) ^ (W[t - 2] >>> 10);
@@ -65,15 +81,15 @@ export class RSA {
       let a = h0,
         b = h1,
         c = h2,
-        d = h3;
-      let e = h4,
+        d = h3,
+        e = h4,
         f = h5,
         g = h6,
         h = h7;
 
       for (let t = 0; t < 64; t++) {
         const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
-        const ch = (e & f) ^ ((~e >>> 0) & g); // ✅ ~e を明示的にuint32化
+        const ch = (e & f) ^ (~e & g);
         const temp1 = (h + S1 + ch + K[t] + W[t]) >>> 0;
         const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
         const maj = (a & b) ^ (a & c) ^ (b & c);
@@ -100,15 +116,16 @@ export class RSA {
     }
 
     const result = new Uint8Array(32);
-    const rv = new DataView(result.buffer);
-    rv.setUint32(0, h0, false);
-    rv.setUint32(4, h1, false);
-    rv.setUint32(8, h2, false);
-    rv.setUint32(12, h3, false);
-    rv.setUint32(16, h4, false);
-    rv.setUint32(20, h5, false);
-    rv.setUint32(24, h6, false);
-    rv.setUint32(28, h7, false);
+    const resultView = new DataView(result.buffer);
+    resultView.setUint32(0, h0, false);
+    resultView.setUint32(4, h1, false);
+    resultView.setUint32(8, h2, false);
+    resultView.setUint32(12, h3, false);
+    resultView.setUint32(16, h4, false);
+    resultView.setUint32(20, h5, false);
+    resultView.setUint32(24, h6, false);
+    resultView.setUint32(28, h7, false);
+
     return result;
   }
 
@@ -172,6 +189,13 @@ export class RSA {
     const mLen = message.length;
 
     if (mLen > k - 2 * hLen - 2) {
+      alert(
+        "メッセージが長すぎます。パディングを考慮すると、RSA-" +
+          k * 8 +
+          "bitでは約" +
+          (k - 2 * hLen - 2) +
+          "バイトまでです。",
+      );
       throw new Error(
         `メッセージが長すぎます。パディングを考慮すると、RSA-${k * 8}bitでは約${k - 2 * hLen - 2}バイトまでです。`,
       );
@@ -298,15 +322,15 @@ export class RSA {
 
     try {
       for (let i = 0; i < this.workerCount; i++) {
-        const encWorker = new Worker("./encrypt-worker.js");
-        const decWorker = new Worker("./decrypt-worker.js");
+        const encWorker = new Worker("./dist/mojyu-ru/encrypt-worker.js");
+        const decWorker = new Worker("./dist/mojyu-ru/decrypt-worker.js");
 
         encWorker.onerror = (e) => {
-          console.error("Encrypt Worker エラー:", e);
+          console.error("🔴 Encrypt Worker エラー:", e);
         };
 
         decWorker.onerror = (e) => {
-          console.error("Decrypt Worker エラー:", e);
+          console.error("🔴 Decrypt Worker エラー:", e);
         };
 
         this.encryptWorkers.push(encWorker);
@@ -314,8 +338,8 @@ export class RSA {
       }
       this.workersInitialized = true;
     } catch (err) {
-      console.error("Worker初期化で例外:", err);
-      console.warn("Worker初期化失敗、メインスレッドで実行します", err);
+      console.error("❌ Worker初期化で例外:", err);
+      console.warn("⚠️ Worker初期化失敗、メインスレッドで実行します", err);
     }
   }
 
@@ -568,6 +592,7 @@ export class RSA {
     onProgress?: (stage: string, progress: number) => void,
   ): Promise<string> {
     const decryptedChunks: Uint8Array[] = [];
+    let useOAEP = true; // 🔥 デフォルトはOAEP
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -577,12 +602,15 @@ export class RSA {
         throw new Error(`復号エラー: ブロック${i}の暗号文が不正です（c >= n）`);
       }
 
+      // バレット還元で c mod p, c mod q
       const cp = this.barrettReduce(c, p, muP, pShift);
       const cq = this.barrettReduce(c, q, muQ, qShift);
 
+      // 各素数下でのべき乗剰余
       const m1 = this.modExpAsync(cp, dp, p, muP, pShift);
       const m2 = this.modExpAsync(cq, dq, q, muQ, qShift);
 
+      // CRT結合
       let diff = m1 - m2;
       while (diff < 0n) diff += p;
 
@@ -594,25 +622,67 @@ export class RSA {
       }
 
       if (m < 0n) {
-        throw new Error(`復号エラー: ブロック${i}で負の値`);
+        throw new Error(`復号エラー: ブロック${i}で負数が発生しました`);
       }
 
-      const paddedMsg = (() => {
-        try {
-          return this.bigintToUint8Array(m, nByteLen);
-        } catch {
-          const temp = this.bigintToUint8Array(m);
-          const out = new Uint8Array(nByteLen);
-          out.set(temp, nByteLen - temp.length);
-          return out;
-        }
-      })();
+      let messageChunk: Uint8Array;
 
-      const messageChunk = await this.oeapUnpad(
-        paddedMsg,
-        nByteLen,
-        new Uint8Array(0),
-      );
+      // 🔥 OAEPを試して、失敗したら生RSAに自動フォールバック
+      if (useOAEP) {
+        try {
+          let paddedMsg: Uint8Array;
+          try {
+            paddedMsg = this.bigintToUint8Array(m, nByteLen);
+          } catch (convError) {
+            const temp = this.bigintToUint8Array(m);
+            paddedMsg = new Uint8Array(nByteLen);
+            paddedMsg.set(temp, nByteLen - temp.length);
+          }
+
+          messageChunk = await this.oeapUnpad(
+            paddedMsg,
+            nByteLen,
+            new Uint8Array(0),
+          );
+        } catch (oeapError) {
+          // 🔥 OAEPパディングエラー → 生RSAに切り替え
+          console.warn(`ブロック${i}: OAEPエラー、生RSAモードに切り替え`);
+          useOAEP = false;
+
+          // 🔥 生RSA処理
+          let restoredBytes = this.bigintToUint8Array(m);
+
+          // 先頭の0x00を除去
+          let start = 0;
+          while (
+            start < restoredBytes.length &&
+            restoredBytes[start] === 0x00
+          ) {
+            start++;
+          }
+
+          if (start > 0) {
+            restoredBytes = restoredBytes.slice(start);
+          }
+
+          messageChunk = restoredBytes;
+        }
+      } else {
+        // 🔥 生RSAモード（2ブロック目以降）
+        let restoredBytes = this.bigintToUint8Array(m);
+
+        // 先頭の0x00を除去
+        let start = 0;
+        while (start < restoredBytes.length && restoredBytes[start] === 0x00) {
+          start++;
+        }
+
+        if (start > 0) {
+          restoredBytes = restoredBytes.slice(start);
+        }
+
+        messageChunk = restoredBytes;
+      }
 
       decryptedChunks.push(messageChunk);
 
@@ -927,26 +997,41 @@ export class RSA {
     const modBits = bitLength(mod);
 
     let k: number;
-    if (modBits >= 131072) k = 13;
-    else if (modBits >= 65536) k = 12;
-    else if (modBits >= 32768) k = 11;
-    else if (modBits >= 16384) k = 10;
-    else if (modBits >= 8192) k = 9;
-    else if (modBits >= 4096) k = 8;
-    else if (modBits >= 2048) k = 7;
-    else if (modBits >= 1024) k = 6;
-    else if (modBits >= 512) k = 5;
-    else if (modBits >= 256) k = 4;
-    else if (modBits >= 128) k = 3;
-    else if (modBits >= 64) k = 2;
-    else k = 1;
+    if (modBits >= 131072) {
+      k = 13;
+    } else if (modBits >= 65536) {
+      k = 12;
+    } else if (modBits >= 32768) {
+      k = 11;
+    } else if (modBits >= 16384) {
+      k = 10;
+    } else if (modBits >= 8192) {
+      k = 9;
+    } else if (modBits >= 4096) {
+      k = 8;
+    } else if (modBits >= 2048) {
+      k = 7;
+    } else if (modBits >= 1024) {
+      k = 6;
+    } else if (modBits >= 512) {
+      k = 5;
+    } else if (modBits >= 256) {
+      k = 4;
+    } else if (modBits >= 128) {
+      k = 3;
+    } else if (modBits >= 64) {
+      k = 2;
+    } else {
+      k = 1;
+    }
 
-    // mod と k だけでキャッシュ（base依存のtableはキャッシュしない）
-    const cacheKey = `${mod}_${k}`;
+    const cacheKey = `${base}_${mod}_${k}`;
     let params = this.montgomeryTableCache.get(cacheKey);
 
     if (!params) {
       const wsize = k;
+      const numOdd = 1 << (wsize - 1);
+
       const R = 1n << BigInt(modBits);
       const mask = R - 1n;
 
@@ -956,39 +1041,47 @@ export class RSA {
       }
       nPrime = (R - nPrime) & mask;
 
+      const montReduce = (T: bigint): bigint => {
+        const u = ((T & mask) * nPrime) & mask;
+        const x = (T + u * mod) >> BigInt(modBits);
+        return x >= mod ? x - mod : x;
+      };
+
+      const baseBar = this.barrettReduce(
+        base << BigInt(modBits),
+        mod,
+        mu,
+        shift,
+      );
+      const baseBar2 = montReduce(baseBar * baseBar);
+      const table = new Array<bigint>(numOdd);
+      table[0] = baseBar;
+      for (let i = 1; i < numOdd; i++) {
+        table[i] = montReduce(table[i - 1] * baseBar2);
+      }
+
       params = {
         modBits,
         wsize,
         R,
         mask,
         nPrime,
-        baseBar: 0n, // ダミー（キャッシュしない）
-        baseBar2: 0n, // ダミー（キャッシュしない）
-        table: [], // ダミー（キャッシュしない）
+        baseBar,
+        baseBar2,
+        table,
       };
       this.montgomeryTableCache.set(cacheKey, params);
     }
 
-    const { modBits: mb, wsize, mask, nPrime } = params;
-
     const montReduce = (T: bigint): bigint => {
+      const { mask, nPrime, modBits } = params!;
       const u = ((T & mask) * nPrime) & mask;
-      const x = (T + u * mod) >> BigInt(mb);
+      const x = (T + u * mod) >> BigInt(modBits);
       return x >= mod ? x - mod : x;
     };
 
-    // base依存のtableは毎回計算
-    const numOdd = 1 << (wsize - 1);
-    const baseBar = this.barrettReduce(base << BigInt(mb), mod, mu, shift);
-    const baseBar2 = montReduce(baseBar * baseBar);
-    const table = new Array<bigint>(numOdd);
-    table[0] = baseBar;
-    for (let i = 1; i < numOdd; i++) {
-      table[i] = montReduce(table[i - 1] * baseBar2);
-    }
-
     const expBin = exp.toString(2);
-    let res = this.barrettReduce(1n << BigInt(mb), mod, mu, shift);
+    let res = this.barrettReduce(1n << BigInt(params!.modBits), mod, mu, shift);
 
     for (let i = 0; i < expBin.length; ) {
       if (expBin[i] === "0") {
@@ -996,7 +1089,7 @@ export class RSA {
         i++;
         continue;
       }
-      let winLen = Math.min(wsize, expBin.length - i);
+      let winLen = Math.min(params!.wsize, expBin.length - i);
       while (winLen > 1 && expBin[i + winLen - 1] === "0") {
         winLen--;
       }
@@ -1005,11 +1098,10 @@ export class RSA {
         res = montReduce(res * res);
       }
       if (winVal > 0) {
-        res = montReduce(res * table[(winVal - 1) >> 1]);
+        res = montReduce(res * params!.table[(winVal - 1) >> 1]);
       }
       i += winLen;
     }
-
     return montReduce(res);
   }
 
@@ -1197,7 +1289,7 @@ export class RSA {
       qShift: kQ * 2n,
     };
   }
-  private parseOpenSSH(pem: string) {
+  public parseOpenSSH(pem: string) {
     const base64 = pem.replace(/-----.*?-----|\s+/g, "");
     const bin = this.base64ToBytes(base64);
     const view = new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
@@ -1211,12 +1303,13 @@ export class RSA {
       return data;
     };
 
-    pos += 15; // "openssh-key-v1\0" をスキップ
-    readBuffer(); // ciphername
-    readBuffer(); // kdfname
-    readBuffer(); // kdfoptions
-    pos += 4; // numKeys をスキップ
-    readBuffer(); // 公開鍵blob
+    pos += 15;
+    readBuffer();
+    readBuffer();
+    readBuffer();
+    const numKeys = view.getUint32(pos);
+    pos += 4;
+    readBuffer();
 
     const privBlob = readBuffer();
     const pView = new DataView(
@@ -1234,8 +1327,8 @@ export class RSA {
       return data;
     };
 
-    bPos += 8; // check1, check2 をスキップ
-    readBlobBuffer(); // key type ("ssh-rsa")
+    bPos += 8;
+    readBlobBuffer();
 
     const n = this.bytesToBigInt(readBlobBuffer());
     const e = this.bytesToBigInt(readBlobBuffer());
@@ -1290,7 +1383,7 @@ export class RSA {
     return res;
   }
 
-  private generateLargePrime(bits: number): bigint {
+  public generateLargePrime(bits: number): bigint {
     const byteLen = bits / 8;
     const uint8 = new Uint8Array(byteLen);
     const min = 1n << BigInt(bits - 1);
@@ -1336,23 +1429,7 @@ export class RSA {
     }
   }
 
-  public async generateRSAKeyPair(bits: number): Promise<{
-    n: bigint;
-    e: bigint;
-    d: bigint;
-    p: bigint;
-    q: bigint;
-    phi: bigint;
-    dp: bigint;
-    dq: bigint;
-    qInv: bigint;
-    muN: bigint;
-    muP: bigint;
-    muQ: bigint;
-    nShift: bigint;
-    pShift: bigint;
-    qShift: bigint;
-  }> {
+  public async generateRSAKeyPair(bits: number) {
     const e = 65537n;
     const half = bits / 2;
 
@@ -1416,7 +1493,7 @@ export class RSA {
     return new Promise((resolve) => {
       let worker: Worker;
       try {
-        worker = new Worker("./prime-worker.js");
+        worker = new Worker("./dist/mojyu-ru/prime-worker.js");
       } catch {
         return resolve(this.generateLargePrime(bits));
       }
@@ -1449,7 +1526,7 @@ export class RSA {
     });
   }
 
-  private bigintToUint8Array(n: bigint, size?: number): Uint8Array {
+  public bigintToUint8Array(n: bigint, size?: number): Uint8Array {
     if (n === 0n) {
       return size ? new Uint8Array(size) : new Uint8Array([0]);
     }
@@ -1559,7 +1636,7 @@ export class RSA {
     return bytes;
   }
 
-  private getPrivateKeyD(e: bigint, phi: bigint): bigint {
+  public getPrivateKeyD(e: bigint, phi: bigint): bigint {
     let r0 = phi,
       r1 = e;
     let x0 = 0n,
@@ -1578,7 +1655,7 @@ export class RSA {
     return x0 < 0n ? x0 + phi : x0;
   }
 
-  private gcd(a: bigint, b: bigint): bigint {
+  public gcd(a: bigint, b: bigint): bigint {
     while (b !== 0n) {
       let t = b;
       b = a % b;
@@ -1587,7 +1664,7 @@ export class RSA {
     return a;
   }
 
-  private rnd(n: bigint): bigint {
+  public rnd(n: bigint): bigint {
     const bitLength = this.bitLength(n);
     const byteLength = (bitLength + 7) >> 3;
     const uint8 = new Uint8Array(byteLength);
@@ -1599,7 +1676,7 @@ export class RSA {
     }
   }
 
-  private isProbablyPrime(n: bigint, k: number = 15): boolean {
+  public isProbablyPrime(n: bigint, k: number = 15): boolean {
     if (n <= 3n) return n > 1n;
     if (!(n & 1n)) return false;
 
